@@ -1,10 +1,47 @@
 import { useState } from 'react'
-import { Button, InputNumber, Input, Space, Tag, Modal, Form } from 'antd'
+import { Button, InputNumber, AutoComplete, Space, Tag, Modal, Form, message, Tooltip } from 'antd'
+import { ReloadOutlined, ScanOutlined } from '@ant-design/icons'
 import socket from '../socket'
+import api from '../api'
 
 export default function ConnectionPanel({ connected }) {
   const [open, setOpen] = useState(false)
   const [form] = Form.useForm()
+  const [ports, setPorts] = useState([])
+  const [loadingPorts, setLoadingPorts] = useState(false)
+  const [scanning, setScanning] = useState(false)
+
+  async function fetchPorts() {
+    setLoadingPorts(true)
+    try {
+      const { data } = await api.get('/modbus/ports')
+      setPorts(data)
+    } catch {
+      message.error('Не удалось получить список портов')
+    } finally {
+      setLoadingPorts(false)
+    }
+  }
+
+  function handleOpen() {
+    setOpen(true)
+    fetchPorts()
+  }
+
+  async function handleScan() {
+    setScanning(true)
+    try {
+      const slaveId = form.getFieldValue('slaveId') ?? 1
+      const baudRate = form.getFieldValue('baudRate') ?? undefined
+      const { data } = await api.post('/modbus/scan', { slaveId, baudRate })
+      form.setFieldsValue({ portPath: data.portPath, baudRate: data.baudRate })
+      message.success(`Найдено: ${data.portPath} — ${data.baudRate} бод`)
+    } catch {
+      message.error('Устройство не найдено. Проверьте подключение и Slave ID.')
+    } finally {
+      setScanning(false)
+    }
+  }
 
   function handleConnect(values) {
     socket.emit('connect:port', {
@@ -19,6 +56,11 @@ export default function ConnectionPanel({ connected }) {
     socket.emit('disconnect:port')
   }
 
+  const portOptions = ports.map(p => ({
+    value: p.path,
+    label: p.manufacturer ? `${p.path} — ${p.manufacturer}` : p.path,
+  }))
+
   return (
     <Space>
       <Tag color={connected ? 'green' : 'red'} style={{ margin: 0 }}>
@@ -30,7 +72,7 @@ export default function ConnectionPanel({ connected }) {
           Отключить
         </Button>
       ) : (
-        <Button size="small" type="primary" onClick={() => setOpen(true)}>
+        <Button size="small" type="primary" onClick={handleOpen}>
           Подключить
         </Button>
       )}
@@ -38,10 +80,24 @@ export default function ConnectionPanel({ connected }) {
       <Modal
         title="Подключение к устройству"
         open={open}
-        onOk={() => form.submit()}
         onCancel={() => setOpen(false)}
-        okText="Подключить"
-        cancelText="Отмена"
+        footer={[
+          <Tooltip key="scan" title="Перебирает все порты и находит первое отвечающее устройство">
+            <Button
+              icon={<ScanOutlined />}
+              onClick={handleScan}
+              loading={scanning}
+            >
+              Автопоиск
+            </Button>
+          </Tooltip>,
+          <Button key="cancel" onClick={() => setOpen(false)}>
+            Отмена
+          </Button>,
+          <Button key="connect" type="primary" onClick={() => form.submit()}>
+            Подключить
+          </Button>,
+        ]}
       >
         <Form
           form={form}
@@ -51,14 +107,35 @@ export default function ConnectionPanel({ connected }) {
         >
           <Form.Item
             name="portPath"
-            label="COM порт"
+            label={
+              <Space>
+                COM порт
+                <Tooltip title="Обновить список портов">
+                  <Button
+                    size="small"
+                    type="text"
+                    icon={<ReloadOutlined spin={loadingPorts} />}
+                    onClick={fetchPorts}
+                  />
+                </Tooltip>
+              </Space>
+            }
             rules={[{ required: true, message: 'Укажите порт' }]}
           >
-            <Input placeholder="Например: /dev/tty.usbserial-10 или COM3" />
+            <AutoComplete
+              options={portOptions}
+              placeholder="Выберите из списка или введите вручную"
+              filterOption={(input, option) =>
+                option.value.toLowerCase().includes(input.toLowerCase())
+              }
+              notFoundContent={loadingPorts ? 'Загрузка...' : 'Порты не найдены'}
+            />
           </Form.Item>
+
           <Form.Item name="baudRate" label="Скорость (бод)">
             <InputNumber min={1200} max={115200} style={{ width: '100%' }} />
           </Form.Item>
+
           <Form.Item name="slaveId" label="Адрес Modbus (Slave ID)">
             <InputNumber min={1} max={247} style={{ width: '100%' }} />
           </Form.Item>

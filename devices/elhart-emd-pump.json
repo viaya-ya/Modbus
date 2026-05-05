@@ -11,14 +11,63 @@
   },
   "groups": [
     {
-      "id": "F0",
-      "name": "Информационные параметры",
-      "description": "Только чтение — текущее состояние ПЧ",
+      "id": "control",
+      "name": "Управление (RS-485)",
+      "description": "Специальные регистры управления через Modbus",
       "params": [
         {
-          "id": "F000",
-          "name": "Выходная частота",
+          "id": "CMD",
+          "name": "Команда управления",
+          "register": 8192,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Стоп" },
+            { "value": 1, "label": "Пуск" },
+            { "value": 2, "label": "Пуск вперёд" },
+            { "value": 3, "label": "Пуск назад" },
+            { "value": 5, "label": "Сброс ошибки" }
+          ]
+        },
+        {
+          "id": "FSET",
+          "name": "Задание частоты",
+          "register": 8193,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400
+        }
+      ]
+    },
+    {
+      "id": "F0",
+      "name": "F0 — Информационные параметры",
+      "description": "Мониторинг текущего состояния ПЧ (только чтение)",
+      "params": [
+        {
+          "id": "F0.00",
+          "name": "Выбор параметра на дисплее",
           "register": 0,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Выходная частота" },
+            { "value": 1, "label": "Заданная частота" },
+            { "value": 2, "label": "Выходной ток" },
+            { "value": 3, "label": "Выходное напряжение" },
+            { "value": 4, "label": "Скорость вращения" },
+            { "value": 5, "label": "Напряжение звена DC" },
+            { "value": 6, "label": "Потребляемая мощность" },
+            { "value": 7, "label": "Обратная связь ПИД" }
+          ]
+        },
+        {
+          "id": "F0.01",
+          "name": "Заданная частота",
+          "register": 1,
           "access": "read",
           "type": "float",
           "scale": 0.01,
@@ -27,31 +76,42 @@
           "max": 400
         },
         {
-          "id": "F001",
+          "id": "F0.02",
+          "name": "Выходная частота",
+          "register": 2,
+          "access": "read",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400
+        },
+        {
+          "id": "F0.03",
           "name": "Выходной ток",
-          "register": 1,
+          "register": 3,
           "access": "read",
           "type": "float",
           "scale": 0.1,
           "unit": "А",
           "min": 0,
-          "max": 999
+          "max": 999.9
         },
         {
-          "id": "F002",
+          "id": "F0.04",
           "name": "Выходное напряжение",
-          "register": 2,
+          "register": 4,
           "access": "read",
-          "type": "float",
+          "type": "int",
           "scale": 1,
           "unit": "В",
           "min": 0,
           "max": 440
         },
         {
-          "id": "F003",
+          "id": "F0.05",
           "name": "Скорость вращения",
-          "register": 3,
+          "register": 5,
           "access": "read",
           "type": "int",
           "scale": 1,
@@ -60,42 +120,20 @@
           "max": 9999
         },
         {
-          "id": "F004",
+          "id": "F0.06",
           "name": "Напряжение звена DC",
-          "register": 4,
+          "register": 6,
           "access": "read",
-          "type": "float",
+          "type": "int",
           "scale": 1,
           "unit": "В",
           "min": 0,
           "max": 800
         },
         {
-          "id": "F005",
-          "name": "Температура радиатора",
-          "register": 5,
-          "access": "read",
-          "type": "float",
-          "scale": 0.1,
-          "unit": "°C",
-          "min": 0,
-          "max": 100
-        },
-        {
-          "id": "F006",
-          "name": "Код ошибки",
-          "register": 6,
-          "access": "read",
-          "type": "int",
-          "scale": 1,
-          "unit": "",
-          "min": 0,
-          "max": 999
-        },
-        {
-          "id": "F008",
+          "id": "F0.07",
           "name": "Потребляемая мощность",
-          "register": 8,
+          "register": 7,
           "access": "read",
           "type": "float",
           "scale": 0.1,
@@ -104,7 +142,18 @@
           "max": 350
         },
         {
-          "id": "F009",
+          "id": "F0.08",
+          "name": "Температура радиатора",
+          "register": 8,
+          "access": "read",
+          "type": "int",
+          "scale": 1,
+          "unit": "°C",
+          "min": 0,
+          "max": 100
+        },
+        {
+          "id": "F0.09",
           "name": "Обратная связь ПИД",
           "register": 9,
           "access": "read",
@@ -113,29 +162,52 @@
           "unit": "%",
           "min": 0,
           "max": 100
+        },
+        {
+          "id": "F0.10",
+          "name": "Код аварии",
+          "register": 10,
+          "access": "read",
+          "type": "int",
+          "scale": 1,
+          "unit": "",
+          "min": 0,
+          "max": 999
+        },
+        {
+          "id": "F0.11",
+          "name": "Входное напряжение",
+          "register": 11,
+          "access": "read",
+          "type": "int",
+          "scale": 1,
+          "unit": "В",
+          "min": 0,
+          "max": 440
         }
       ]
     },
     {
       "id": "F1",
-      "name": "Базовые параметры управления",
+      "name": "F1 — Базовые параметры",
       "params": [
         {
-          "id": "F100",
+          "id": "F1.00",
           "name": "Источник команд управления",
-          "register": 256,
+          "register": 100,
           "access": "read-write",
           "type": "enum",
           "options": [
             { "value": 0, "label": "Пульт управления" },
             { "value": 1, "label": "Дискретные входы" },
             { "value": 2, "label": "RS-485" }
-          ]
+          ],
+          "default": 0
         },
         {
-          "id": "F101",
+          "id": "F1.01",
           "name": "Источник задания частоты",
-          "register": 257,
+          "register": 101,
           "access": "read-write",
           "type": "enum",
           "options": [
@@ -144,12 +216,13 @@
             { "value": 2, "label": "Аналоговый вход AI2" },
             { "value": 3, "label": "RS-485" },
             { "value": 4, "label": "Программный режим" }
-          ]
+          ],
+          "default": 0
         },
         {
-          "id": "F102",
+          "id": "F1.02",
           "name": "Максимальная частота",
-          "register": 258,
+          "register": 102,
           "access": "read-write",
           "type": "float",
           "scale": 0.01,
@@ -159,9 +232,21 @@
           "default": 50
         },
         {
-          "id": "F103",
-          "name": "Минимальная частота",
-          "register": 259,
+          "id": "F1.03",
+          "name": "Верхний предел частоты",
+          "register": 103,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 50
+        },
+        {
+          "id": "F1.04",
+          "name": "Нижний предел частоты",
+          "register": 104,
           "access": "read-write",
           "type": "float",
           "scale": 0.01,
@@ -171,50 +256,183 @@
           "default": 0
         },
         {
-          "id": "F108",
-          "name": "Время разгона 1",
-          "register": 264,
+          "id": "F1.05",
+          "name": "Пусковая частота",
+          "register": 105,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 10,
+          "default": 0.5
+        },
+        {
+          "id": "F1.06",
+          "name": "Время удержания пусковой частоты",
+          "register": 106,
           "access": "read-write",
           "type": "float",
           "scale": 0.1,
           "unit": "сек",
           "min": 0,
+          "max": 10,
+          "default": 0
+        },
+        {
+          "id": "F1.07",
+          "name": "Режим остановки",
+          "register": 107,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Торможение до нуля" },
+            { "value": 1, "label": "Свободный выбег" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F1.08",
+          "name": "Время разгона 1",
+          "register": 108,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0.1,
           "max": 6000,
           "default": 10
         },
         {
-          "id": "F109",
+          "id": "F1.09",
           "name": "Время торможения 1",
-          "register": 265,
+          "register": 109,
           "access": "read-write",
           "type": "float",
           "scale": 0.1,
           "unit": "сек",
-          "min": 0,
+          "min": 0.1,
           "max": 6000,
           "default": 10
+        },
+        {
+          "id": "F1.10",
+          "name": "Время разгона 2",
+          "register": 110,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0.1,
+          "max": 6000,
+          "default": 20
+        },
+        {
+          "id": "F1.11",
+          "name": "Время торможения 2",
+          "register": 111,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0.1,
+          "max": 6000,
+          "default": 20
+        },
+        {
+          "id": "F1.12",
+          "name": "Частота толчка",
+          "register": 112,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 50,
+          "default": 5
+        },
+        {
+          "id": "F1.13",
+          "name": "Время разгона толчка",
+          "register": 113,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0.1,
+          "max": 6000,
+          "default": 10
+        },
+        {
+          "id": "F1.14",
+          "name": "Время торможения толчка",
+          "register": 114,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0.1,
+          "max": 6000,
+          "default": 10
+        },
+        {
+          "id": "F1.15",
+          "name": "Направление вращения",
+          "register": 115,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Вперёд" },
+            { "value": 1, "label": "Назад" },
+            { "value": 2, "label": "Запрет реверса" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F1.16",
+          "name": "Несущая частота ШИМ",
+          "register": 116,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "кГц",
+          "min": 1,
+          "max": 16,
+          "default": 6
+        },
+        {
+          "id": "F1.17",
+          "name": "Предустановленная частота",
+          "register": 117,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 50
         }
       ]
     },
     {
       "id": "F2",
-      "name": "Параметры двигателя",
+      "name": "F2 — Параметры двигателя",
       "params": [
         {
-          "id": "F200",
+          "id": "F2.00",
           "name": "Номинальная мощность двигателя",
-          "register": 512,
+          "register": 200,
           "access": "read-write",
           "type": "float",
           "scale": 0.1,
           "unit": "кВт",
-          "min": 0,
+          "min": 0.1,
           "max": 350
         },
         {
-          "id": "F201",
+          "id": "F2.01",
           "name": "Номинальное напряжение двигателя",
-          "register": 513,
+          "register": 201,
           "access": "read-write",
           "type": "int",
           "scale": 1,
@@ -224,20 +442,745 @@
           "default": 380
         },
         {
-          "id": "F202",
+          "id": "F2.02",
           "name": "Номинальный ток двигателя",
-          "register": 514,
+          "register": 202,
           "access": "read-write",
           "type": "float",
           "scale": 0.1,
           "unit": "А",
-          "min": 0,
-          "max": 999
+          "min": 0.1,
+          "max": 999.9
         },
         {
-          "id": "F203",
+          "id": "F2.03",
           "name": "Номинальная частота двигателя",
-          "register": 515,
+          "register": 203,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 1,
+          "max": 400,
+          "default": 50
+        },
+        {
+          "id": "F2.04",
+          "name": "Номинальная скорость двигателя",
+          "register": 204,
+          "access": "read-write",
+          "type": "int",
+          "scale": 1,
+          "unit": "об/мин",
+          "min": 0,
+          "max": 9999,
+          "default": 1450
+        },
+        {
+          "id": "F2.05",
+          "name": "Число полюсов двигателя",
+          "register": 205,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 2, "label": "2 полюса (3000 об/мин)" },
+            { "value": 4, "label": "4 полюса (1500 об/мин)" },
+            { "value": 6, "label": "6 полюсов (1000 об/мин)" },
+            { "value": 8, "label": "8 полюсов (750 об/мин)" }
+          ],
+          "default": 4
+        },
+        {
+          "id": "F2.06",
+          "name": "Защита двигателя от перегрева",
+          "register": 206,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Отключена" },
+            { "value": 1, "label": "Общего назначения" },
+            { "value": 2, "label": "Частотно-регулируемый привод" }
+          ],
+          "default": 1
+        },
+        {
+          "id": "F2.07",
+          "name": "Коэффициент защиты от перегрева",
+          "register": 207,
+          "access": "read-write",
+          "type": "int",
+          "scale": 1,
+          "unit": "%",
+          "min": 20,
+          "max": 120,
+          "default": 100
+        },
+        {
+          "id": "F2.08",
+          "name": "Автонастройка параметров двигателя",
+          "register": 208,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Нет действия" },
+            { "value": 1, "label": "Статическая идентификация" },
+            { "value": 2, "label": "Динамическая идентификация" }
+          ],
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": "F3",
+      "name": "F3 — Входы и выходы",
+      "params": [
+        {
+          "id": "F3.00",
+          "name": "AI1 нижний предел (В)",
+          "register": 300,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "В",
+          "min": 0,
+          "max": 10,
+          "default": 0
+        },
+        {
+          "id": "F3.01",
+          "name": "AI1 нижний предел → частота",
+          "register": 301,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "%",
+          "min": -100,
+          "max": 100,
+          "default": 0
+        },
+        {
+          "id": "F3.02",
+          "name": "AI1 верхний предел (В)",
+          "register": 302,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "В",
+          "min": 0,
+          "max": 10,
+          "default": 10
+        },
+        {
+          "id": "F3.03",
+          "name": "AI1 верхний предел → частота",
+          "register": 303,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "%",
+          "min": -100,
+          "max": 100,
+          "default": 100
+        },
+        {
+          "id": "F3.04",
+          "name": "AI1 время фильтрации",
+          "register": 304,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "сек",
+          "min": 0,
+          "max": 10,
+          "default": 0.1
+        },
+        {
+          "id": "F3.05",
+          "name": "AI2 нижний предел (мА)",
+          "register": 305,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "мА",
+          "min": 0,
+          "max": 20,
+          "default": 4
+        },
+        {
+          "id": "F3.06",
+          "name": "AI2 нижний предел → частота",
+          "register": 306,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "%",
+          "min": -100,
+          "max": 100,
+          "default": 0
+        },
+        {
+          "id": "F3.07",
+          "name": "AI2 верхний предел (мА)",
+          "register": 307,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "мА",
+          "min": 0,
+          "max": 20,
+          "default": 20
+        },
+        {
+          "id": "F3.08",
+          "name": "AI2 верхний предел → частота",
+          "register": 308,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "%",
+          "min": -100,
+          "max": 100,
+          "default": 100
+        },
+        {
+          "id": "F3.09",
+          "name": "AI2 время фильтрации",
+          "register": 309,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "сек",
+          "min": 0,
+          "max": 10,
+          "default": 0.1
+        },
+        {
+          "id": "F3.10",
+          "name": "Выходной сигнал AO1",
+          "register": 310,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Выходная частота" },
+            { "value": 1, "label": "Заданная частота" },
+            { "value": 2, "label": "Выходной ток" },
+            { "value": 3, "label": "Выходное напряжение" },
+            { "value": 4, "label": "Потребляемая мощность" },
+            { "value": 5, "label": "Обратная связь ПИД" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F3.11",
+          "name": "AO1 нижний уровень выхода",
+          "register": 311,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "В",
+          "min": 0,
+          "max": 10,
+          "default": 0
+        },
+        {
+          "id": "F3.12",
+          "name": "AO1 верхний уровень выхода",
+          "register": 312,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "В",
+          "min": 0,
+          "max": 10,
+          "default": 10
+        },
+        {
+          "id": "F3.13",
+          "name": "Функция дискретного входа DI1",
+          "register": 313,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Нет функции" },
+            { "value": 1, "label": "Пуск вперёд (FWD)" },
+            { "value": 2, "label": "Пуск назад (REV)" },
+            { "value": 3, "label": "Трёхпроводное управление" },
+            { "value": 4, "label": "Толчок вперёд" },
+            { "value": 5, "label": "Толчок назад" },
+            { "value": 6, "label": "Разгон/торможение 2" },
+            { "value": 7, "label": "Сброс аварии" },
+            { "value": 8, "label": "Внешняя авария" },
+            { "value": 9, "label": "Запрет разгона/торможения" },
+            { "value": 10, "label": "Многоскоростная ступень 1" },
+            { "value": 11, "label": "Многоскоростная ступень 2" },
+            { "value": 12, "label": "Многоскоростная ступень 3" },
+            { "value": 13, "label": "Пауза" },
+            { "value": 14, "label": "Увеличение частоты (UP)" },
+            { "value": 15, "label": "Уменьшение частоты (DOWN)" }
+          ],
+          "default": 1
+        },
+        {
+          "id": "F3.14",
+          "name": "Функция дискретного входа DI2",
+          "register": 314,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Нет функции" },
+            { "value": 1, "label": "Пуск вперёд (FWD)" },
+            { "value": 2, "label": "Пуск назад (REV)" },
+            { "value": 3, "label": "Трёхпроводное управление" },
+            { "value": 4, "label": "Толчок вперёд" },
+            { "value": 5, "label": "Толчок назад" },
+            { "value": 6, "label": "Разгон/торможение 2" },
+            { "value": 7, "label": "Сброс аварии" },
+            { "value": 8, "label": "Внешняя авария" },
+            { "value": 9, "label": "Запрет разгона/торможения" },
+            { "value": 10, "label": "Многоскоростная ступень 1" },
+            { "value": 11, "label": "Многоскоростная ступень 2" },
+            { "value": 12, "label": "Многоскоростная ступень 3" },
+            { "value": 13, "label": "Пауза" },
+            { "value": 14, "label": "Увеличение частоты (UP)" },
+            { "value": 15, "label": "Уменьшение частоты (DOWN)" }
+          ],
+          "default": 2
+        },
+        {
+          "id": "F3.15",
+          "name": "Функция дискретного входа DI3",
+          "register": 315,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Нет функции" },
+            { "value": 1, "label": "Пуск вперёд (FWD)" },
+            { "value": 2, "label": "Пуск назад (REV)" },
+            { "value": 3, "label": "Трёхпроводное управление" },
+            { "value": 4, "label": "Толчок вперёд" },
+            { "value": 5, "label": "Толчок назад" },
+            { "value": 6, "label": "Разгон/торможение 2" },
+            { "value": 7, "label": "Сброс аварии" },
+            { "value": 8, "label": "Внешняя авария" },
+            { "value": 9, "label": "Запрет разгона/торможения" },
+            { "value": 10, "label": "Многоскоростная ступень 1" },
+            { "value": 11, "label": "Многоскоростная ступень 2" },
+            { "value": 12, "label": "Многоскоростная ступень 3" },
+            { "value": 13, "label": "Пауза" },
+            { "value": 14, "label": "Увеличение частоты (UP)" },
+            { "value": 15, "label": "Уменьшение частоты (DOWN)" }
+          ],
+          "default": 7
+        },
+        {
+          "id": "F3.16",
+          "name": "Функция дискретного входа DI4",
+          "register": 316,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Нет функции" },
+            { "value": 1, "label": "Пуск вперёд (FWD)" },
+            { "value": 2, "label": "Пуск назад (REV)" },
+            { "value": 3, "label": "Трёхпроводное управление" },
+            { "value": 4, "label": "Толчок вперёд" },
+            { "value": 5, "label": "Толчок назад" },
+            { "value": 6, "label": "Разгон/торможение 2" },
+            { "value": 7, "label": "Сброс аварии" },
+            { "value": 8, "label": "Внешняя авария" },
+            { "value": 9, "label": "Запрет разгона/торможения" },
+            { "value": 10, "label": "Многоскоростная ступень 1" },
+            { "value": 11, "label": "Многоскоростная ступень 2" },
+            { "value": 12, "label": "Многоскоростная ступень 3" },
+            { "value": 13, "label": "Пауза" },
+            { "value": 14, "label": "Увеличение частоты (UP)" },
+            { "value": 15, "label": "Уменьшение частоты (DOWN)" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F3.15",
+          "name": "Функция дискретного входа DI5",
+          "register": 317,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Нет функции" },
+            { "value": 1, "label": "Пуск вперёд (FWD)" },
+            { "value": 2, "label": "Пуск назад (REV)" },
+            { "value": 3, "label": "Трёхпроводное управление" },
+            { "value": 4, "label": "Толчок вперёд" },
+            { "value": 5, "label": "Толчок назад" },
+            { "value": 6, "label": "Разгон/торможение 2" },
+            { "value": 7, "label": "Сброс аварии" },
+            { "value": 8, "label": "Внешняя авария" },
+            { "value": 9, "label": "Запрет разгона/торможения" },
+            { "value": 10, "label": "Многоскоростная ступень 1" },
+            { "value": 11, "label": "Многоскоростная ступень 2" },
+            { "value": 12, "label": "Многоскоростная ступень 3" },
+            { "value": 13, "label": "Пауза" },
+            { "value": 14, "label": "Увеличение частоты (UP)" },
+            { "value": 15, "label": "Уменьшение частоты (DOWN)" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F3.18",
+          "name": "Функция дискретного выхода DO1",
+          "register": 318,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Нет функции" },
+            { "value": 1, "label": "ПЧ готов к работе" },
+            { "value": 2, "label": "ПЧ работает" },
+            { "value": 3, "label": "Достигнута заданная частота" },
+            { "value": 4, "label": "Авария ПЧ" },
+            { "value": 5, "label": "Превышение тока" },
+            { "value": 6, "label": "Частота ниже порога" },
+            { "value": 7, "label": "Пуск вперёд" },
+            { "value": 8, "label": "Пуск назад" }
+          ],
+          "default": 2
+        },
+        {
+          "id": "F3.19",
+          "name": "Функция дискретного выхода DO2",
+          "register": 319,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Нет функции" },
+            { "value": 1, "label": "ПЧ готов к работе" },
+            { "value": 2, "label": "ПЧ работает" },
+            { "value": 3, "label": "Достигнута заданная частота" },
+            { "value": 4, "label": "Авария ПЧ" },
+            { "value": 5, "label": "Превышение тока" },
+            { "value": 6, "label": "Частота ниже порога" },
+            { "value": 7, "label": "Пуск вперёд" },
+            { "value": 8, "label": "Пуск назад" }
+          ],
+          "default": 4
+        }
+      ]
+    },
+    {
+      "id": "F4",
+      "name": "F4 — Параметры V/F-характеристики",
+      "params": [
+        {
+          "id": "F4.00",
+          "name": "Режим V/F-характеристики",
+          "register": 400,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Линейная" },
+            { "value": 1, "label": "Квадратичная" },
+            { "value": 2, "label": "Пользовательская" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F4.01",
+          "name": "Форсировка момента",
+          "register": 401,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "%",
+          "min": 0,
+          "max": 30,
+          "default": 0
+        },
+        {
+          "id": "F4.02",
+          "name": "Частота точки 1 V/F",
+          "register": 402,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 0
+        },
+        {
+          "id": "F4.03",
+          "name": "Напряжение точки 1 V/F",
+          "register": 403,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "%",
+          "min": 0,
+          "max": 100,
+          "default": 0
+        },
+        {
+          "id": "F4.04",
+          "name": "Частота точки 2 V/F",
+          "register": 404,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 0
+        },
+        {
+          "id": "F4.05",
+          "name": "Напряжение точки 2 V/F",
+          "register": 405,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "%",
+          "min": 0,
+          "max": 100,
+          "default": 0
+        },
+        {
+          "id": "F4.06",
+          "name": "Частота точки 3 V/F",
+          "register": 406,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 0
+        },
+        {
+          "id": "F4.07",
+          "name": "Напряжение точки 3 V/F",
+          "register": 407,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "%",
+          "min": 0,
+          "max": 100,
+          "default": 0
+        },
+        {
+          "id": "F4.08",
+          "name": "Уровень ограничения тока",
+          "register": 408,
+          "access": "read-write",
+          "type": "int",
+          "scale": 1,
+          "unit": "%",
+          "min": 20,
+          "max": 200,
+          "default": 150
+        },
+        {
+          "id": "F4.09",
+          "name": "Режим ограничения тока",
+          "register": 409,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Ограничение при разгоне" },
+            { "value": 1, "label": "Постоянное ограничение" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F4.10",
+          "name": "Уровень ограничения напряжения",
+          "register": 410,
+          "access": "read-write",
+          "type": "int",
+          "scale": 1,
+          "unit": "%",
+          "min": 110,
+          "max": 150,
+          "default": 130
+        },
+        {
+          "id": "F4.11",
+          "name": "Компенсация скольжения",
+          "register": 411,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "%",
+          "min": 0,
+          "max": 200,
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": "F5",
+      "name": "F5 — Программный режим (7 ступеней)",
+      "params": [
+        {
+          "id": "F5.00",
+          "name": "Режим программного управления",
+          "register": 500,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Отключён" },
+            { "value": 1, "label": "Однократный цикл" },
+            { "value": 2, "label": "Непрерывный цикл" },
+            { "value": 3, "label": "Удержание последней ступени" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F5.01",
+          "name": "Частота ступени 1",
+          "register": 501,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 10
+        },
+        {
+          "id": "F5.02",
+          "name": "Время ступени 1",
+          "register": 502,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0,
+          "max": 6000,
+          "default": 10
+        },
+        {
+          "id": "F5.03",
+          "name": "Направление ступени 1",
+          "register": 503,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Вперёд" },
+            { "value": 1, "label": "Назад" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F5.04",
+          "name": "Частота ступени 2",
+          "register": 504,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 20
+        },
+        {
+          "id": "F5.05",
+          "name": "Время ступени 2",
+          "register": 505,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0,
+          "max": 6000,
+          "default": 10
+        },
+        {
+          "id": "F5.06",
+          "name": "Направление ступени 2",
+          "register": 506,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Вперёд" },
+            { "value": 1, "label": "Назад" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F5.07",
+          "name": "Частота ступени 3",
+          "register": 507,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 30
+        },
+        {
+          "id": "F5.08",
+          "name": "Время ступени 3",
+          "register": 508,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0,
+          "max": 6000,
+          "default": 10
+        },
+        {
+          "id": "F5.09",
+          "name": "Направление ступени 3",
+          "register": 509,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Вперёд" },
+            { "value": 1, "label": "Назад" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F5.10",
+          "name": "Частота ступени 4",
+          "register": 510,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 40
+        },
+        {
+          "id": "F5.11",
+          "name": "Время ступени 4",
+          "register": 511,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0,
+          "max": 6000,
+          "default": 10
+        },
+        {
+          "id": "F5.12",
+          "name": "Направление ступени 4",
+          "register": 512,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Вперёд" },
+            { "value": 1, "label": "Назад" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F5.13",
+          "name": "Частота ступени 5",
+          "register": 513,
           "access": "read-write",
           "type": "float",
           "scale": 0.01,
@@ -247,92 +1190,324 @@
           "default": 50
         },
         {
-          "id": "F204",
-          "name": "Номинальная скорость двигателя",
+          "id": "F5.14",
+          "name": "Время ступени 5",
+          "register": 514,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0,
+          "max": 6000,
+          "default": 10
+        },
+        {
+          "id": "F5.15",
+          "name": "Направление ступени 5",
+          "register": 515,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Вперёд" },
+            { "value": 1, "label": "Назад" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F5.16",
+          "name": "Частота ступени 6",
           "register": 516,
           "access": "read-write",
-          "type": "int",
-          "scale": 1,
-          "unit": "об/мин",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
           "min": 0,
-          "max": 9999,
-          "default": 1450
+          "max": 400,
+          "default": 45
+        },
+        {
+          "id": "F5.17",
+          "name": "Время ступени 6",
+          "register": 517,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0,
+          "max": 6000,
+          "default": 10
+        },
+        {
+          "id": "F5.18",
+          "name": "Направление ступени 6",
+          "register": 518,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Вперёд" },
+            { "value": 1, "label": "Назад" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F5.19",
+          "name": "Частота ступени 7",
+          "register": 519,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 25
+        },
+        {
+          "id": "F5.20",
+          "name": "Время ступени 7",
+          "register": 520,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0,
+          "max": 6000,
+          "default": 10
+        },
+        {
+          "id": "F5.21",
+          "name": "Направление ступени 7",
+          "register": 521,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Вперёд" },
+            { "value": 1, "label": "Назад" }
+          ],
+          "default": 0
         }
       ]
     },
     {
       "id": "F6",
-      "name": "Параметры ПИД-регулятора",
+      "name": "F6 — ПИД-регулятор и каскад",
       "params": [
         {
-          "id": "F600",
+          "id": "F6.00",
           "name": "Режим ПИД-регулятора",
-          "register": 1536,
+          "register": 600,
           "access": "read-write",
           "type": "enum",
           "options": [
             { "value": 0, "label": "Отключён" },
             { "value": 1, "label": "Поддержание давления" },
             { "value": 2, "label": "Каскадный режим" }
-          ]
+          ],
+          "default": 0
         },
         {
-          "id": "F604",
-          "name": "Уставка давления",
-          "register": 1540,
+          "id": "F6.01",
+          "name": "Источник задания ПИД",
+          "register": 601,
           "access": "read-write",
-          "type": "float",
-          "scale": 0.001,
-          "unit": "бар",
-          "min": 0,
-          "max": 10
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Параметр F6.03" },
+            { "value": 1, "label": "Аналоговый вход AI1" },
+            { "value": 2, "label": "Аналоговый вход AI2" },
+            { "value": 3, "label": "RS-485" }
+          ],
+          "default": 0
         },
         {
-          "id": "F605",
-          "name": "Пропорциональный коэффициент (P)",
-          "register": 1541,
+          "id": "F6.02",
+          "name": "Источник обратной связи ПИД",
+          "register": 602,
           "access": "read-write",
-          "type": "float",
-          "scale": 0.01,
-          "unit": "",
-          "min": 0,
-          "max": 100,
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Аналоговый вход AI1" },
+            { "value": 1, "label": "Аналоговый вход AI2" }
+          ],
           "default": 1
         },
         {
-          "id": "F606",
-          "name": "Интегральный коэффициент (I)",
-          "register": 1542,
+          "id": "F6.03",
+          "name": "Уставка ПИД",
+          "register": 603,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "%",
+          "min": 0,
+          "max": 100,
+          "default": 50
+        },
+        {
+          "id": "F6.04",
+          "name": "Время фильтрации обратной связи",
+          "register": 604,
           "access": "read-write",
           "type": "float",
           "scale": 0.01,
           "unit": "сек",
           "min": 0,
+          "max": 60,
+          "default": 0.1
+        },
+        {
+          "id": "F6.05",
+          "name": "Пропорциональный коэффициент P",
+          "register": 605,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "",
+          "min": 0,
           "max": 100,
           "default": 1
+        },
+        {
+          "id": "F6.06",
+          "name": "Интегральное время I",
+          "register": 606,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "сек",
+          "min": 0.01,
+          "max": 100,
+          "default": 1
+        },
+        {
+          "id": "F6.07",
+          "name": "Дифференциальное время D",
+          "register": 607,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.001,
+          "unit": "сек",
+          "min": 0,
+          "max": 10,
+          "default": 0
+        },
+        {
+          "id": "F6.08",
+          "name": "Верхний предел выхода ПИД",
+          "register": 608,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "%",
+          "min": 0,
+          "max": 100,
+          "default": 100
+        },
+        {
+          "id": "F6.09",
+          "name": "Нижний предел выхода ПИД",
+          "register": 609,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "%",
+          "min": 0,
+          "max": 100,
+          "default": 0
+        },
+        {
+          "id": "F6.10",
+          "name": "Допустимая ошибка ПИД",
+          "register": 610,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "%",
+          "min": 0,
+          "max": 100,
+          "default": 10
+        },
+        {
+          "id": "F6.11",
+          "name": "Режим действия ПИД",
+          "register": 611,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Прямое действие" },
+            { "value": 1, "label": "Обратное действие" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F6.20",
+          "name": "Количество насосов (каскад)",
+          "register": 620,
+          "access": "read-write",
+          "type": "int",
+          "scale": 1,
+          "unit": "шт",
+          "min": 1,
+          "max": 4,
+          "default": 1
+        },
+        {
+          "id": "F6.21",
+          "name": "Частота включения следующего насоса",
+          "register": 621,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 48
+        },
+        {
+          "id": "F6.22",
+          "name": "Частота отключения насоса",
+          "register": 622,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 25
+        },
+        {
+          "id": "F6.23",
+          "name": "Задержка включения насоса",
+          "register": 623,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0,
+          "max": 300,
+          "default": 5
+        },
+        {
+          "id": "F6.24",
+          "name": "Задержка отключения насоса",
+          "register": 624,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0,
+          "max": 300,
+          "default": 5
         }
       ]
     },
     {
       "id": "F7",
-      "name": "Параметры RS-485",
+      "name": "F7 — Параметры RS-485",
       "params": [
         {
-          "id": "F700",
-          "name": "Адрес устройства",
-          "register": 1792,
-          "access": "read-write",
-          "type": "int",
-          "scale": 1,
-          "unit": "",
-          "min": 1,
-          "max": 247,
-          "default": 1
-        },
-        {
-          "id": "F701",
+          "id": "F7.00",
           "name": "Скорость передачи данных",
-          "register": 1793,
+          "register": 700,
           "access": "read-write",
           "type": "enum",
           "options": [
@@ -346,19 +1521,230 @@
           "default": 3
         },
         {
-          "id": "F702",
+          "id": "F7.01",
           "name": "Формат данных",
-          "register": 1794,
+          "register": 701,
           "access": "read-write",
           "type": "enum",
           "options": [
             { "value": 0, "label": "8-N-1 RTU" },
             { "value": 1, "label": "8-E-1 RTU" },
             { "value": 2, "label": "8-O-1 RTU" },
-            { "value": 3, "label": "8-N-2 RTU" },
-            { "value": 4, "label": "7-E-1 ASCII" },
-            { "value": 5, "label": "7-O-1 ASCII" }
+            { "value": 3, "label": "8-N-2 RTU" }
           ],
+          "default": 0
+        },
+        {
+          "id": "F7.02",
+          "name": "Адрес устройства (Slave ID)",
+          "register": 702,
+          "access": "read-write",
+          "type": "int",
+          "scale": 1,
+          "unit": "",
+          "min": 1,
+          "max": 247,
+          "default": 1
+        },
+        {
+          "id": "F7.03",
+          "name": "Задержка ответа",
+          "register": 703,
+          "access": "read-write",
+          "type": "int",
+          "scale": 1,
+          "unit": "мс",
+          "min": 0,
+          "max": 200,
+          "default": 2
+        },
+        {
+          "id": "F7.04",
+          "name": "Таймаут связи",
+          "register": 704,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0,
+          "max": 60,
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": "F8",
+      "name": "F8 — Расширенные настройки",
+      "params": [
+        {
+          "id": "F8.00",
+          "name": "Пароль параметров",
+          "register": 800,
+          "access": "read-write",
+          "type": "int",
+          "scale": 1,
+          "unit": "",
+          "min": 0,
+          "max": 9999,
+          "default": 0
+        },
+        {
+          "id": "F8.01",
+          "name": "Копирование/восстановление параметров",
+          "register": 801,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Нет действия" },
+            { "value": 1, "label": "Сохранить параметры" },
+            { "value": 2, "label": "Загрузить параметры" },
+            { "value": 3, "label": "Сброс к заводским настройкам" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F8.02",
+          "name": "Управление вентилятором охлаждения",
+          "register": 802,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Авто (по температуре)" },
+            { "value": 1, "label": "Всегда включён" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F8.03",
+          "name": "Режим пуска",
+          "register": 803,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Пуск с нулевой частоты" },
+            { "value": 1, "label": "Пуск с подхватом скорости" },
+            { "value": 2, "label": "Пуск с DC-торможением" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F8.04",
+          "name": "Ток DC-торможения перед пуском",
+          "register": 804,
+          "access": "read-write",
+          "type": "int",
+          "scale": 1,
+          "unit": "%",
+          "min": 0,
+          "max": 100,
+          "default": 0
+        },
+        {
+          "id": "F8.05",
+          "name": "Время DC-торможения перед пуском",
+          "register": 805,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0,
+          "max": 30,
+          "default": 0
+        },
+        {
+          "id": "F8.06",
+          "name": "Ток DC-торможения при остановке",
+          "register": 806,
+          "access": "read-write",
+          "type": "int",
+          "scale": 1,
+          "unit": "%",
+          "min": 0,
+          "max": 100,
+          "default": 0
+        },
+        {
+          "id": "F8.07",
+          "name": "Время DC-торможения при остановке",
+          "register": 807,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0,
+          "max": 30,
+          "default": 0
+        },
+        {
+          "id": "F8.08",
+          "name": "Порог пониженного напряжения",
+          "register": 808,
+          "access": "read-write",
+          "type": "int",
+          "scale": 1,
+          "unit": "В",
+          "min": 200,
+          "max": 400,
+          "default": 350
+        },
+        {
+          "id": "F8.09",
+          "name": "Проезд через пропадание питания",
+          "register": 809,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Отключён" },
+            { "value": 1, "label": "Включён" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "F8.10",
+          "name": "Пропускаемая частота 1",
+          "register": 810,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 0
+        },
+        {
+          "id": "F8.11",
+          "name": "Полоса пропускания частоты 1",
+          "register": 811,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 10,
+          "default": 0
+        },
+        {
+          "id": "F8.12",
+          "name": "Пропускаемая частота 2",
+          "register": 812,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 0
+        },
+        {
+          "id": "F8.13",
+          "name": "Полоса пропускания частоты 2",
+          "register": 813,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 10,
           "default": 0
         }
       ]

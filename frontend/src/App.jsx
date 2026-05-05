@@ -62,6 +62,7 @@ export default function App() {
             devices={devices}
             selectedId={selectedDevice?.id}
             onSelect={setSelectedDevice}
+            connected={connected}
           />
         </Sider>
 

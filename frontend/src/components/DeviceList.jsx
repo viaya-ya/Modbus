@@ -1,7 +1,7 @@
-import { List, Typography } from 'antd'
-import { ApiOutlined } from '@ant-design/icons'
+import { List, Typography, Badge } from 'antd'
+import { ApiOutlined, DisconnectOutlined } from '@ant-design/icons'
 
-export default function DeviceList({ devices, selectedId, onSelect }) {
+export default function DeviceList({ devices, selectedId, onSelect, connected }) {
   if (!devices.length) {
     return (
       <Typography.Text type="secondary" style={{ display: 'block', padding: '16px' }}>
@@ -9,6 +9,9 @@ export default function DeviceList({ devices, selectedId, onSelect }) {
       </Typography.Text>
     )
   }
+
+  const Icon = connected ? ApiOutlined : DisconnectOutlined
+  const iconColor = connected ? '#52c41a' : '#ff4d4f'
 
   return (
     <List
@@ -24,7 +27,11 @@ export default function DeviceList({ devices, selectedId, onSelect }) {
           }}
         >
           <List.Item.Meta
-            avatar={<ApiOutlined style={{ fontSize: 20, color: '#1677ff', marginTop: 2 }} />}
+            avatar={
+              <Badge dot status={connected ? 'success' : 'error'} offset={[-2, 2]}>
+                <Icon style={{ fontSize: 20, color: iconColor, marginTop: 2 }} />
+              </Badge>
+            }
             title={<span style={{ fontSize: 13 }}>{device.name}</span>}
             description={
               <span style={{ fontSize: 12 }}>
