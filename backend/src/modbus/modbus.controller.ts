@@ -5,6 +5,7 @@ import {
   Body,
   BadRequestException,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ModbusService } from './modbus.service';
 import { DevicesService } from '../devices/devices.service';
@@ -19,6 +20,18 @@ export class ModbusController {
   @Get('status')
   getStatus() {
     return this.modbusService.getStatus();
+  }
+
+  @Get('ports')
+  async listPorts() {
+    return this.modbusService.listPorts();
+  }
+
+  @Post('scan')
+  async scan(@Body() body: { slaveId?: number; baudRate?: number }) {
+    const result = await this.modbusService.scanForDevice(body);
+    if (!result) throw new ServiceUnavailableException('Устройство Modbus не найдено');
+    return result;
   }
 
   @Post('connect')
