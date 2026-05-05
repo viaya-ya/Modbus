@@ -1,0 +1,367 @@
+{
+  "id": "elhart-emd-pump",
+  "name": "ELHART EMD-PUMP",
+  "description": "Преобразователь частоты для насосов",
+  "connection": {
+    "baudRate": 9600,
+    "dataBits": 8,
+    "stopBits": 1,
+    "parity": "none",
+    "protocol": "modbus-rtu"
+  },
+  "groups": [
+    {
+      "id": "F0",
+      "name": "Информационные параметры",
+      "description": "Только чтение — текущее состояние ПЧ",
+      "params": [
+        {
+          "id": "F000",
+          "name": "Выходная частота",
+          "register": 0,
+          "access": "read",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400
+        },
+        {
+          "id": "F001",
+          "name": "Выходной ток",
+          "register": 1,
+          "access": "read",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "А",
+          "min": 0,
+          "max": 999
+        },
+        {
+          "id": "F002",
+          "name": "Выходное напряжение",
+          "register": 2,
+          "access": "read",
+          "type": "float",
+          "scale": 1,
+          "unit": "В",
+          "min": 0,
+          "max": 440
+        },
+        {
+          "id": "F003",
+          "name": "Скорость вращения",
+          "register": 3,
+          "access": "read",
+          "type": "int",
+          "scale": 1,
+          "unit": "об/мин",
+          "min": 0,
+          "max": 9999
+        },
+        {
+          "id": "F004",
+          "name": "Напряжение звена DC",
+          "register": 4,
+          "access": "read",
+          "type": "float",
+          "scale": 1,
+          "unit": "В",
+          "min": 0,
+          "max": 800
+        },
+        {
+          "id": "F005",
+          "name": "Температура радиатора",
+          "register": 5,
+          "access": "read",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "°C",
+          "min": 0,
+          "max": 100
+        },
+        {
+          "id": "F006",
+          "name": "Код ошибки",
+          "register": 6,
+          "access": "read",
+          "type": "int",
+          "scale": 1,
+          "unit": "",
+          "min": 0,
+          "max": 999
+        },
+        {
+          "id": "F008",
+          "name": "Потребляемая мощность",
+          "register": 8,
+          "access": "read",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "кВт",
+          "min": 0,
+          "max": 350
+        },
+        {
+          "id": "F009",
+          "name": "Обратная связь ПИД",
+          "register": 9,
+          "access": "read",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "%",
+          "min": 0,
+          "max": 100
+        }
+      ]
+    },
+    {
+      "id": "F1",
+      "name": "Базовые параметры управления",
+      "params": [
+        {
+          "id": "F100",
+          "name": "Источник команд управления",
+          "register": 256,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Пульт управления" },
+            { "value": 1, "label": "Дискретные входы" },
+            { "value": 2, "label": "RS-485" }
+          ]
+        },
+        {
+          "id": "F101",
+          "name": "Источник задания частоты",
+          "register": 257,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Пульт управления" },
+            { "value": 1, "label": "Аналоговый вход AI1" },
+            { "value": 2, "label": "Аналоговый вход AI2" },
+            { "value": 3, "label": "RS-485" },
+            { "value": 4, "label": "Программный режим" }
+          ]
+        },
+        {
+          "id": "F102",
+          "name": "Максимальная частота",
+          "register": 258,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 50
+        },
+        {
+          "id": "F103",
+          "name": "Минимальная частота",
+          "register": 259,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 0
+        },
+        {
+          "id": "F108",
+          "name": "Время разгона 1",
+          "register": 264,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0,
+          "max": 6000,
+          "default": 10
+        },
+        {
+          "id": "F109",
+          "name": "Время торможения 1",
+          "register": 265,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "сек",
+          "min": 0,
+          "max": 6000,
+          "default": 10
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "name": "Параметры двигателя",
+      "params": [
+        {
+          "id": "F200",
+          "name": "Номинальная мощность двигателя",
+          "register": 512,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "кВт",
+          "min": 0,
+          "max": 350
+        },
+        {
+          "id": "F201",
+          "name": "Номинальное напряжение двигателя",
+          "register": 513,
+          "access": "read-write",
+          "type": "int",
+          "scale": 1,
+          "unit": "В",
+          "min": 0,
+          "max": 440,
+          "default": 380
+        },
+        {
+          "id": "F202",
+          "name": "Номинальный ток двигателя",
+          "register": 514,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.1,
+          "unit": "А",
+          "min": 0,
+          "max": 999
+        },
+        {
+          "id": "F203",
+          "name": "Номинальная частота двигателя",
+          "register": 515,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 50
+        },
+        {
+          "id": "F204",
+          "name": "Номинальная скорость двигателя",
+          "register": 516,
+          "access": "read-write",
+          "type": "int",
+          "scale": 1,
+          "unit": "об/мин",
+          "min": 0,
+          "max": 9999,
+          "default": 1450
+        }
+      ]
+    },
+    {
+      "id": "F6",
+      "name": "Параметры ПИД-регулятора",
+      "params": [
+        {
+          "id": "F600",
+          "name": "Режим ПИД-регулятора",
+          "register": 1536,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "Отключён" },
+            { "value": 1, "label": "Поддержание давления" },
+            { "value": 2, "label": "Каскадный режим" }
+          ]
+        },
+        {
+          "id": "F604",
+          "name": "Уставка давления",
+          "register": 1540,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.001,
+          "unit": "бар",
+          "min": 0,
+          "max": 10
+        },
+        {
+          "id": "F605",
+          "name": "Пропорциональный коэффициент (P)",
+          "register": 1541,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "",
+          "min": 0,
+          "max": 100,
+          "default": 1
+        },
+        {
+          "id": "F606",
+          "name": "Интегральный коэффициент (I)",
+          "register": 1542,
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "сек",
+          "min": 0,
+          "max": 100,
+          "default": 1
+        }
+      ]
+    },
+    {
+      "id": "F7",
+      "name": "Параметры RS-485",
+      "params": [
+        {
+          "id": "F700",
+          "name": "Адрес устройства",
+          "register": 1792,
+          "access": "read-write",
+          "type": "int",
+          "scale": 1,
+          "unit": "",
+          "min": 1,
+          "max": 247,
+          "default": 1
+        },
+        {
+          "id": "F701",
+          "name": "Скорость передачи данных",
+          "register": 1793,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "1200 бит/сек" },
+            { "value": 1, "label": "2400 бит/сек" },
+            { "value": 2, "label": "4800 бит/сек" },
+            { "value": 3, "label": "9600 бит/сек" },
+            { "value": 4, "label": "19200 бит/сек" },
+            { "value": 5, "label": "38400 бит/сек" }
+          ],
+          "default": 3
+        },
+        {
+          "id": "F702",
+          "name": "Формат данных",
+          "register": 1794,
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0, "label": "8-N-1 RTU" },
+            { "value": 1, "label": "8-E-1 RTU" },
+            { "value": 2, "label": "8-O-1 RTU" },
+            { "value": 3, "label": "8-N-2 RTU" },
+            { "value": 4, "label": "7-E-1 ASCII" },
+            { "value": 5, "label": "7-O-1 ASCII" }
+          ],
+          "default": 0
+        }
+      ]
+    }
+  ]
+}
