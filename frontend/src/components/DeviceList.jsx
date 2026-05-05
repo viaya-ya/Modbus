@@ -1,5 +1,5 @@
 import { List, Typography, Badge } from 'antd'
-import { CheckCircleOutlined, DisconnectOutlined } from '@ant-design/icons'
+import { LinkOutlined, DisconnectOutlined } from '@ant-design/icons'
 
 export default function DeviceList({ devices, selectedId, onSelect, connected }) {
   if (!devices.length) {
@@ -10,7 +10,7 @@ export default function DeviceList({ devices, selectedId, onSelect, connected })
     )
   }
 
-  const Icon = connected ? CheckCircleOutlined : DisconnectOutlined
+  const Icon = connected ? LinkOutlined : DisconnectOutlined
   const iconColor = connected ? '#52c41a' : '#ff4d4f'
 
   return (
