@@ -37,7 +37,7 @@ export default function ConnectionPanel({ connected }) {
       form.setFieldsValue({ portPath: data.portPath, baudRate: data.baudRate })
       message.success(`Найдено: ${data.portPath} — ${data.baudRate} бод`)
     } catch {
-      message.error('Устройство не найдено. Проверьте подключение и Slave ID.')
+      message.error('Адаптер USB→RS-485 не найден. Проверьте, подключён ли он к компьютеру.')
     } finally {
       setScanning(false)
     }
@@ -82,7 +82,7 @@ export default function ConnectionPanel({ connected }) {
         open={open}
         onCancel={() => setOpen(false)}
         footer={[
-          <Tooltip key="scan" title="Перебирает все порты и находит первое отвечающее устройство">
+          <Tooltip key="scan" title="Находит USB→RS-485 адаптер по идентификатору производителя (Silicon Labs, FTDI, CH340 и др.)">
             <Button
               icon={<ScanOutlined />}
               onClick={handleScan}

@@ -29,8 +29,8 @@ export class ModbusController {
 
   @Post('scan')
   async scan(@Body() body: { slaveId?: number; baudRate?: number }) {
-    const result = await this.modbusService.scanForDevice(body);
-    if (!result) throw new ServiceUnavailableException('Устройство Modbus не найдено');
+    const result = await this.modbusService.findAdapterPort(body);
+    if (!result) throw new ServiceUnavailableException('USB→RS-485 адаптер не найден');
     return result;
   }
 

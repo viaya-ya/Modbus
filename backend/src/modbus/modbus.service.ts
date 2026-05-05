@@ -71,29 +71,37 @@ export class ModbusService {
     }));
   }
 
-  async scanForDevice(opts: { slaveId?: number; baudRate?: number }): Promise<ConnectOptions | null> {
+  async findAdapterPort(opts: { slaveId?: number; baudRate?: number }): Promise<ConnectOptions | null> {
     const ports = await this.listPorts();
+    if (!ports.length) return null;
+
+    // USB VID-ы распространённых чипов USB→Serial (RS-485 адаптеры)
+    const knownVids = [
+      '10c4',  // Silicon Labs CP2102/CP2104 (Elhart EDC-A1-U1)
+      '0403',  // FTDI FT232
+      '1a86',  // WCH CH340/CH341
+      '067b',  // Prolific PL2303
+      '04d8',  // Microchip MCP2200
+    ];
+    const knownManufacturers = ['silicon', 'ftdi', 'wch', 'prolific', 'microchip'];
+
     const slaveId = opts.slaveId ?? 1;
     const baudRate = opts.baudRate ?? 9600;
 
-    for (const port of ports) {
-      const tmp = new ModbusRTU();
-      try {
-        await tmp.connectRTUBuffered(port.path, {
-          baudRate,
-          dataBits: 8,
-          stopBits: 1,
-          parity: 'none',
-        });
-        tmp.setID(slaveId);
-        tmp.setTimeout(500);
-        await tmp.readHoldingRegisters(0, 1);
-        await new Promise<void>(resolve => tmp.close(() => resolve()));
-        return { portPath: port.path, baudRate, slaveId };
-      } catch {
-        try { await new Promise<void>(resolve => tmp.close(() => resolve())); } catch { /* ignore */ }
-      }
+    // 1. Ищем по VID
+    let found = ports.find(p => p.vendorId && knownVids.includes(p.vendorId.toLowerCase()));
+
+    // 2. Ищем по названию производителя
+    if (!found) {
+      found = ports.find(p =>
+        p.manufacturer && knownManufacturers.some(m => p.manufacturer!.toLowerCase().includes(m)),
+      );
     }
-    return null;
+
+    // 3. Если порт один — берём его
+    if (!found && ports.length === 1) found = ports[0];
+
+    if (!found) return null;
+    return { portPath: found.path, baudRate, slaveId };
   }
 }
