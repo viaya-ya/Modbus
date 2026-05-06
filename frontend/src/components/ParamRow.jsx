@@ -1,9 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Row, Col, Button, InputNumber, Select, Typography, Spin, message, Space } from 'antd'
 import api from '../api'
+import { addLog } from '../log'
 
-export default function ParamRow({ device, param, modbusConnected }) {
+export default function ParamRow({ device, param, modbusConnected, injectedValue }) {
   const [value, setValue] = useState(null)
+
+  useEffect(() => {
+    if (injectedValue !== undefined) setValue(injectedValue)
+  }, [injectedValue])
   const [editValue, setEditValue] = useState(null)
   const [reading, setReading] = useState(false)
   const [writing, setWriting] = useState(false)
@@ -13,8 +18,11 @@ export default function ParamRow({ device, param, modbusConnected }) {
     try {
       const res = await api.post('/modbus/read', { deviceId: device.id, paramId: param.id })
       setValue(res.data.value)
+      addLog('success', `Прочитано ${param.id} (${param.name}): ${res.data.value} ${param.unit ?? ''}`)
     } catch (e) {
-      message.error(e.response?.data?.message ?? 'Ошибка чтения')
+      const msg = e.response?.data?.message ?? 'Ошибка чтения'
+      message.error(msg)
+      addLog('error', `Ошибка чтения ${param.id}: ${msg}`)
     } finally {
       setReading(false)
     }
@@ -27,8 +35,11 @@ export default function ParamRow({ device, param, modbusConnected }) {
       await api.post('/modbus/write', { deviceId: device.id, paramId: param.id, value: editValue })
       setValue(editValue)
       message.success('Записано успешно')
+      addLog('success', `Записано ${param.id} (${param.name}): ${editValue} ${param.unit ?? ''}`)
     } catch (e) {
-      message.error(e.response?.data?.message ?? 'Ошибка записи')
+      const msg = e.response?.data?.message ?? 'Ошибка записи'
+      message.error(msg)
+      addLog('error', `Ошибка записи ${param.id}: ${msg}`)
     } finally {
       setWriting(false)
     }

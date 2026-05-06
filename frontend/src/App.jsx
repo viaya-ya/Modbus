@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
-import { Layout, Typography, Empty } from 'antd'
+import { Layout, Typography, Empty, Button, Badge } from 'antd'
+import { FileTextOutlined } from '@ant-design/icons'
 import DeviceList from './components/DeviceList'
 import DeviceDetail from './components/DeviceDetail'
 import ConnectionPanel from './components/ConnectionPanel'
+import BusScanner from './components/BusScanner'
+import LogDrawer from './components/LogDrawer'
 import socket from './socket'
+import { useLog } from './log'
 import 'antd/dist/reset.css'
 import './App.css'
 
@@ -13,6 +17,11 @@ export default function App() {
   const [devices, setDevices] = useState([])
   const [selectedDevice, setSelectedDevice] = useState(null)
   const [connected, setConnected] = useState(false)
+  const [reconnecting, setReconnecting] = useState(false)
+  const [reconnectAttempt, setReconnectAttempt] = useState(0)
+  const [logOpen, setLogOpen] = useState(false)
+  const entries = useLog()
+  const errorCount = entries.filter(e => e.level === 'error').length
 
   useEffect(() => {
     socket.on('devices:list', list => setDevices(list))
@@ -22,7 +31,11 @@ export default function App() {
         prev ? list.find(d => d.id === prev.id) ?? null : null,
       )
     })
-    socket.on('modbus:status', status => setConnected(status.connected))
+    socket.on('modbus:status', status => {
+      setConnected(status.connected)
+      setReconnecting(status.reconnecting ?? false)
+      setReconnectAttempt(status.attempt ?? 0)
+    })
 
     return () => {
       socket.off('devices:list')
@@ -45,7 +58,19 @@ export default function App() {
         <Typography.Title level={4} style={{ color: '#fff', margin: 0, whiteSpace: 'nowrap' }}>
           Modbus Controller
         </Typography.Title>
-        <ConnectionPanel connected={connected} />
+        <ConnectionPanel connected={connected} reconnecting={reconnecting} reconnectAttempt={reconnectAttempt} />
+        <BusScanner connected={connected} />
+        <div style={{ marginLeft: 'auto' }}>
+          <Badge count={errorCount} size="small">
+            <Button
+              icon={<FileTextOutlined />}
+              onClick={() => setLogOpen(true)}
+              style={{ background: 'transparent', borderColor: '#ffffff40', color: '#fff' }}
+            >
+              Журнал
+            </Button>
+          </Badge>
+        </div>
       </Header>
 
       <Layout>
@@ -77,6 +102,8 @@ export default function App() {
           )}
         </Content>
       </Layout>
+
+      <LogDrawer open={logOpen} onClose={() => setLogOpen(false)} />
     </Layout>
   )
 }

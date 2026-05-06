@@ -13,6 +13,8 @@ import { Server, Socket } from 'socket.io';
 import { DevicesService } from '../devices/devices.service';
 import { ModbusService } from '../modbus/modbus.service';
 
+const RECONNECT_INTERVAL_MS = 5000;
+
 @WebSocketGateway({ cors: { origin: '*' } })
 export class ModbusGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleInit
@@ -21,6 +23,11 @@ export class ModbusGateway
   server: Server;
 
   private monitorInterval: NodeJS.Timeout | null = null;
+  private scanning = false;
+  private scanCancelled = false;
+
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private reconnectAttempt = 0;
 
   constructor(
     private readonly devicesService: DevicesService,
@@ -37,25 +44,34 @@ export class ModbusGateway
     this.devicesService.events.on('device:removed', () =>
       this.server?.emit('devices:updated', this.devicesService.getAll()),
     );
+
+    this.modbusService.events.on('connection:lost', () => {
+      this.stopMonitor();
+      this.server?.emit('modbus:status', this.buildStatus());
+      this.startReconnect();
+    });
   }
 
   afterInit(_server: Server) {}
 
   handleConnection(client: Socket) {
     client.emit('devices:list', this.devicesService.getAll());
-    client.emit('modbus:status', this.modbusService.getStatus());
+    client.emit('modbus:status', this.buildStatus());
   }
 
   handleDisconnect(_client: Socket) {}
 
+  // ─── Connection ────────────────────────────────────────────────────────────
+
   @SubscribeMessage('connect:port')
   async handleConnectPort(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { portPath: string; baudRate: number; slaveId: number },
+    @MessageBody() payload: { portPath: string; baudRate: number },
   ) {
+    this.stopReconnect();
     try {
       await this.modbusService.connect(payload);
-      this.server.emit('modbus:status', this.modbusService.getStatus());
+      this.server.emit('modbus:status', this.buildStatus());
       return { success: true };
     } catch (e) {
       client.emit('modbus:error', { message: (e as Error).message });
@@ -65,10 +81,105 @@ export class ModbusGateway
 
   @SubscribeMessage('disconnect:port')
   async handleDisconnectPort() {
+    this.stopReconnect();
     this.stopMonitor();
     await this.modbusService.disconnect();
-    this.server.emit('modbus:status', this.modbusService.getStatus());
+    this.server.emit('modbus:status', this.buildStatus());
   }
+
+  // ─── Reconnect ─────────────────────────────────────────────────────────────
+
+  private startReconnect() {
+    this.stopReconnect();
+    this.reconnectAttempt = 0;
+    // First attempt immediately, then every RECONNECT_INTERVAL_MS
+    this.tryReconnect();
+    this.reconnectTimer = setInterval(() => this.tryReconnect(), RECONNECT_INTERVAL_MS);
+  }
+
+  private stopReconnect() {
+    if (this.reconnectTimer) {
+      clearInterval(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.reconnectAttempt = 0;
+  }
+
+  private async tryReconnect() {
+    if (!this.reconnectTimer && this.reconnectAttempt > 0) return; // was stopped
+    const opts = this.modbusService.getStatus().options;
+    if (!opts) { this.stopReconnect(); return; }
+
+    this.reconnectAttempt++;
+    this.server?.emit('modbus:status', this.buildStatus());
+
+    try {
+      await this.modbusService.connect(opts);
+      this.stopReconnect();
+      this.server?.emit('modbus:status', this.buildStatus());
+    } catch {
+      // next attempt scheduled by setInterval
+    }
+  }
+
+  private buildStatus() {
+    return {
+      ...this.modbusService.getStatus(),
+      reconnecting: this.reconnectTimer !== null,
+      attempt: this.reconnectAttempt,
+    };
+  }
+
+  // ─── Bus scan ──────────────────────────────────────────────────────────────
+
+  @SubscribeMessage('bus:scan:start')
+  async handleBusScanStart(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { from?: number; to?: number },
+  ) {
+    if (!this.modbusService.isConnected()) {
+      client.emit('bus:scan:error', { message: 'Нет подключения к порту' });
+      return;
+    }
+    if (this.scanning) {
+      client.emit('bus:scan:error', { message: 'Сканирование уже запущено' });
+      return;
+    }
+
+    this.stopMonitor();
+    this.scanning = true;
+    this.scanCancelled = false;
+
+    const from = Math.max(1, payload.from ?? 1);
+    const to   = Math.min(247, payload.to ?? 32);
+
+    try {
+      const found = await this.modbusService.scanBus(
+        from, to,
+        (addr, foundSoFar) => {
+          client.emit('bus:scan:progress', {
+            current: addr - from + 1,
+            total: to - from + 1,
+            scannedAddr: addr,
+            found: foundSoFar,
+          });
+        },
+        () => this.scanCancelled,
+      );
+      client.emit('bus:scan:done', { found });
+    } catch (e) {
+      client.emit('bus:scan:error', { message: (e as Error).message });
+    } finally {
+      this.scanning = false;
+    }
+  }
+
+  @SubscribeMessage('bus:scan:cancel')
+  handleBusScanCancel() {
+    this.scanCancelled = true;
+  }
+
+  // ─── Monitor ───────────────────────────────────────────────────────────────
 
   @SubscribeMessage('monitor:start')
   handleMonitorStart(
@@ -95,13 +206,15 @@ export class ModbusGateway
       params = allParams.filter(p => paramIds.includes(p.id));
     }
 
+    const slaveId = device.connection.slaveId ?? 1;
+
     this.monitorInterval = setInterval(async () => {
       if (!this.modbusService.isConnected()) return;
 
       const data: Record<string, any> = {};
       for (const param of params) {
         try {
-          const rawValue = await this.modbusService.readRegister(param.register);
+          const rawValue = await this.modbusService.readRegister(param.register, slaveId);
           data[param.id] = {
             id: param.id,
             name: param.name,

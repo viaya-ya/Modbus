@@ -28,7 +28,7 @@ export class ModbusController {
   }
 
   @Post('scan')
-  async scan(@Body() body: { slaveId?: number; baudRate?: number }) {
+  async scan(@Body() body: { baudRate?: number }) {
     const result = await this.modbusService.findAdapterPort(body);
     if (!result) throw new ServiceUnavailableException('USB→RS-485 адаптер не найден');
     return result;
@@ -36,13 +36,12 @@ export class ModbusController {
 
   @Post('connect')
   async connect(
-    @Body() body: { portPath: string; baudRate?: number; slaveId?: number },
+    @Body() body: { portPath: string; baudRate?: number },
   ) {
     if (!body.portPath) throw new BadRequestException('portPath is required');
     await this.modbusService.connect({
       portPath: body.portPath,
       baudRate: body.baudRate ?? 9600,
-      slaveId: body.slaveId ?? 1,
     });
     return { success: true };
   }
@@ -57,9 +56,12 @@ export class ModbusController {
   async read(@Body() body: { deviceId: string; paramId: string }) {
     if (!this.modbusService.isConnected())
       throw new BadRequestException('Not connected to Modbus');
+    const device = this.devicesService.getById(body.deviceId);
+    if (!device) throw new NotFoundException(`Device '${body.deviceId}' not found`);
     const param = this.devicesService.findParam(body.deviceId, body.paramId);
     if (!param) throw new NotFoundException(`Param '${body.paramId}' not found`);
-    const rawValue = await this.modbusService.readRegister(param.register);
+    const slaveId = device.connection.slaveId ?? 1;
+    const rawValue = await this.modbusService.readRegister(param.register, slaveId);
     const scale = param.scale ?? 1;
     return {
       paramId: param.id,
@@ -75,12 +77,15 @@ export class ModbusController {
   ) {
     if (!this.modbusService.isConnected())
       throw new BadRequestException('Not connected to Modbus');
+    const device = this.devicesService.getById(body.deviceId);
+    if (!device) throw new NotFoundException(`Device '${body.deviceId}' not found`);
     const param = this.devicesService.findParam(body.deviceId, body.paramId);
     if (!param) throw new NotFoundException(`Param '${body.paramId}' not found`);
     if (param.access !== 'read-write')
       throw new BadRequestException(`Param '${body.paramId}' is read-only`);
+    const slaveId = device.connection.slaveId ?? 1;
     const scale = param.scale ?? 1;
-    await this.modbusService.writeRegister(param.register, Math.round(body.value / scale));
+    await this.modbusService.writeRegister(param.register, Math.round(body.value / scale), slaveId);
     return { success: true };
   }
 }

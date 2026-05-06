@@ -25,6 +25,7 @@ export interface ParamGroup {
 }
 
 export interface DeviceConnection {
+  slaveId: number;
   baudRate: number;
   dataBits: number;
   stopBits: number;
@@ -32,10 +33,30 @@ export interface DeviceConnection {
   protocol: string;
 }
 
+export interface DeviceImages {
+  device?: string;
+  wiring?: string;
+}
+
+export type AlertCondition = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq';
+export type AlertLevel = 'info' | 'warning' | 'error';
+
+export interface AlertRule {
+  id: string;
+  paramId: string;
+  condition: AlertCondition;
+  threshold: number;
+  level: AlertLevel;
+  message: string;
+}
+
 export interface DeviceConfig {
   id: string;
   name: string;
   description?: string;
   connection: DeviceConnection;
+  images?: DeviceImages;
+  errorCodes?: Record<string, string>;
+  alerts?: AlertRule[];
   groups: ParamGroup[];
 }

@@ -1,15 +1,27 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button, InputNumber, AutoComplete, Space, Tag, Modal, Form, message, Tooltip } from 'antd'
-import { ReloadOutlined, ScanOutlined } from '@ant-design/icons'
+import { ReloadOutlined, ScanOutlined, LoadingOutlined } from '@ant-design/icons'
 import socket from '../socket'
 import api from '../api'
+import { addLog } from '../log'
 
-export default function ConnectionPanel({ connected }) {
+export default function ConnectionPanel({ connected, reconnecting, reconnectAttempt }) {
   const [open, setOpen] = useState(false)
   const [form] = Form.useForm()
   const [ports, setPorts] = useState([])
   const [loadingPorts, setLoadingPorts] = useState(false)
   const [scanning, setScanning] = useState(false)
+  const prevReconnecting = useRef(false)
+
+  useEffect(() => {
+    if (reconnecting && !prevReconnecting.current) {
+      addLog('warning', 'Соединение потеряно. Запуск авто-переподключения...')
+    }
+    if (!reconnecting && prevReconnecting.current && connected) {
+      addLog('success', 'Соединение восстановлено')
+    }
+    prevReconnecting.current = reconnecting
+  }, [reconnecting, connected])
 
   async function fetchPorts() {
     setLoadingPorts(true)
@@ -31,9 +43,8 @@ export default function ConnectionPanel({ connected }) {
   async function handleScan() {
     setScanning(true)
     try {
-      const slaveId = form.getFieldValue('slaveId') ?? 1
       const baudRate = form.getFieldValue('baudRate') ?? undefined
-      const { data } = await api.post('/modbus/scan', { slaveId, baudRate })
+      const { data } = await api.post('/modbus/scan', { baudRate })
       form.setFieldsValue({ portPath: data.portPath, baudRate: data.baudRate })
       message.success(`Найдено: ${data.portPath} — ${data.baudRate} бод`)
     } catch {
@@ -47,13 +58,14 @@ export default function ConnectionPanel({ connected }) {
     socket.emit('connect:port', {
       portPath: values.portPath,
       baudRate: values.baudRate,
-      slaveId: values.slaveId,
     })
+    addLog('info', `Подключение к порту ${values.portPath}, ${values.baudRate} бод`)
     setOpen(false)
   }
 
   function handleDisconnect() {
     socket.emit('disconnect:port')
+    addLog('info', 'Отключение от порта')
   }
 
   const portOptions = ports.map(p => ({
@@ -61,15 +73,27 @@ export default function ConnectionPanel({ connected }) {
     label: p.manufacturer ? `${p.path} — ${p.manufacturer}` : p.path,
   }))
 
+  const statusTag = connected ? (
+    <Tag color="green" style={{ margin: 0 }}>Подключено</Tag>
+  ) : reconnecting ? (
+    <Tag color="orange" icon={<LoadingOutlined spin />} style={{ margin: 0 }}>
+      Переподключение… попытка {reconnectAttempt}
+    </Tag>
+  ) : (
+    <Tag color="red" style={{ margin: 0 }}>Не подключено</Tag>
+  )
+
   return (
     <Space>
-      <Tag color={connected ? 'green' : 'red'} style={{ margin: 0 }}>
-        {connected ? 'Подключено' : 'Не подключено'}
-      </Tag>
+      {statusTag}
 
       {connected ? (
         <Button size="small" danger onClick={handleDisconnect}>
           Отключить
+        </Button>
+      ) : reconnecting ? (
+        <Button size="small" onClick={handleDisconnect}>
+          Отменить
         </Button>
       ) : (
         <Button size="small" type="primary" onClick={handleOpen}>
@@ -103,7 +127,7 @@ export default function ConnectionPanel({ connected }) {
           form={form}
           onFinish={handleConnect}
           layout="vertical"
-          initialValues={{ baudRate: 9600, slaveId: 1 }}
+          initialValues={{ baudRate: 9600 }}
         >
           <Form.Item
             name="portPath"
@@ -132,12 +156,12 @@ export default function ConnectionPanel({ connected }) {
             />
           </Form.Item>
 
-          <Form.Item name="baudRate" label="Скорость (бод)">
+          <Form.Item
+            name="baudRate"
+            label="Скорость (бод)"
+            extra="Все устройства на одной шине RS-485 должны работать на одной скорости"
+          >
             <InputNumber min={1200} max={115200} style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item name="slaveId" label="Адрес Modbus (Slave ID)">
-            <InputNumber min={1} max={247} style={{ width: '100%' }} />
           </Form.Item>
         </Form>
       </Modal>
