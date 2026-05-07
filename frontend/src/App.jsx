@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Layout, Typography, Empty, Button, Badge } from 'antd'
-import { FileTextOutlined } from '@ant-design/icons'
+import { Layout, Typography, Empty, Button, Badge, Segmented } from 'antd'
+import { FileTextOutlined, ControlOutlined, BulbOutlined } from '@ant-design/icons'
 import DeviceList from './components/DeviceList'
 import DeviceDetail from './components/DeviceDetail'
 import ConnectionPanel from './components/ConnectionPanel'
 import BusScanner from './components/BusScanner'
 import LogDrawer from './components/LogDrawer'
+import OlaPage from './components/ola/OlaPage'
 import socket from './socket'
 import { useLog } from './log'
 import 'antd/dist/reset.css'
@@ -14,6 +15,7 @@ import './App.css'
 const { Header, Sider, Content } = Layout
 
 export default function App() {
+  const [mode, setMode] = useState('modbus')
   const [devices, setDevices] = useState([])
   const [selectedDevice, setSelectedDevice] = useState(null)
   const [connected, setConnected] = useState(false)
@@ -58,8 +60,21 @@ export default function App() {
         <Typography.Title level={4} style={{ color: '#fff', margin: 0, whiteSpace: 'nowrap' }}>
           Modbus Controller
         </Typography.Title>
-        <ConnectionPanel connected={connected} reconnecting={reconnecting} reconnectAttempt={reconnectAttempt} />
-        <BusScanner connected={connected} />
+        <Segmented
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: 'modbus', label: 'Modbus RTU', icon: <ControlOutlined /> },
+            { value: 'ola', label: 'OLA / DMX', icon: <BulbOutlined /> },
+          ]}
+          style={{ background: '#ffffff20' }}
+        />
+        {mode === 'modbus' && (
+          <>
+            <ConnectionPanel connected={connected} reconnecting={reconnecting} reconnectAttempt={reconnectAttempt} />
+            <BusScanner connected={connected} />
+          </>
+        )}
         <div style={{ marginLeft: 'auto' }}>
           <Badge count={errorCount} size="small">
             <Button
@@ -73,35 +88,41 @@ export default function App() {
         </div>
       </Header>
 
-      <Layout>
-        <Sider
-          width={270}
-          style={{ background: '#fff', borderRight: '1px solid #f0f0f0' }}
-        >
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>
-            <Typography.Text strong style={{ fontSize: 13, color: '#666' }}>
-              УСТРОЙСТВА
-            </Typography.Text>
-          </div>
-          <DeviceList
-            devices={devices}
-            selectedId={selectedDevice?.id}
-            onSelect={setSelectedDevice}
-            connected={connected}
-          />
-        </Sider>
-
-        <Content style={{ padding: 24, background: '#fafafa' }}>
-          {selectedDevice ? (
-            <DeviceDetail device={selectedDevice} modbusConnected={connected} />
-          ) : (
-            <Empty
-              description="Выберите устройство из списка слева"
-              style={{ marginTop: 80 }}
+      {mode === 'modbus' ? (
+        <Layout style={{ flex: 1 }}>
+          <Sider
+            width={270}
+            style={{ background: '#fff', borderRight: '1px solid #f0f0f0' }}
+          >
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>
+              <Typography.Text strong style={{ fontSize: 13, color: '#666' }}>
+                УСТРОЙСТВА
+              </Typography.Text>
+            </div>
+            <DeviceList
+              devices={devices}
+              selectedId={selectedDevice?.id}
+              onSelect={setSelectedDevice}
+              connected={connected}
             />
-          )}
-        </Content>
-      </Layout>
+          </Sider>
+
+          <Content style={{ padding: 24, background: '#fafafa' }}>
+            {selectedDevice ? (
+              <DeviceDetail device={selectedDevice} modbusConnected={connected} />
+            ) : (
+              <Empty
+                description="Выберите устройство из списка слева"
+                style={{ marginTop: 80 }}
+              />
+            )}
+          </Content>
+        </Layout>
+      ) : (
+        <Layout style={{ flex: 1, overflow: 'hidden' }}>
+          <OlaPage />
+        </Layout>
+      )}
 
       <LogDrawer open={logOpen} onClose={() => setLogOpen(false)} />
     </Layout>

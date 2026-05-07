@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Row, Col, Button, InputNumber, Select, Typography, Spin, message, Space } from 'antd'
+import { Row, Col, Button, InputNumber, Select, Typography, Spin, message, Space, Tag } from 'antd'
 import api from '../api'
 import { addLog } from '../log'
 
@@ -52,6 +52,14 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
       return opt ? opt.label : String(value)
     }
     if (param.type === 'float') return `${Number(value).toFixed(2)} ${param.unit ?? ''}`
+    if (param.type === 'bitmask' && param.bits) {
+      const raw = Math.round(value)
+      return param.bits.map(b => {
+        const bitVal = (raw >> b.bit) & 1
+        const label = b.values?.[String(bitVal)] ?? String(bitVal)
+        return <Tag key={b.bit} style={{ marginRight: 2 }}>{label}</Tag>
+      })
+    }
     return `${value} ${param.unit ?? ''}`
   }
 

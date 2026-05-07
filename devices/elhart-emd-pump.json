@@ -69,6 +69,72 @@
   ],
   "groups": [
     {
+      "id": "vfd-control",
+      "name": "Управление ПЧ",
+      "description": "Регистры управления через Modbus RS-485. Источник команд P102=2, источник частоты P101=5",
+      "params": [
+        {
+          "id": "FREQ_SET",
+          "name": "Задание выходной частоты",
+          "description": "Условие: P101 = 5. Диапазон 0…40000 (= 0…400.00 Гц, шаг 0.01 Гц)",
+          "register": 8193,
+          "registerHex": "2001h",
+          "access": "read-write",
+          "type": "float",
+          "scale": 0.01,
+          "unit": "Гц",
+          "min": 0,
+          "max": 400,
+          "default": 0.0
+        },
+        {
+          "id": "CMD",
+          "name": "Команды управления ПЧ",
+          "description": "Условие: P102 = 2. Побитовый регистр: bit1-bit0 — пуск/стоп/JOG, bit3-bit2 — направление, bit4 — сброс аварии",
+          "register": 8192,
+          "registerHex": "2000h",
+          "access": "read-write",
+          "type": "enum",
+          "options": [
+            { "value": 0,  "label": "Нет действия" },
+            { "value": 1,  "label": "СТОП" },
+            { "value": 2,  "label": "ПУСК" },
+            { "value": 8,  "label": "Вращение в прямом направлении" },
+            { "value": 4,  "label": "Вращение в обратном направлении" },
+            { "value": 12, "label": "Сменить направление вращения" },
+            { "value": 10, "label": "Вращение на частоте JOG в прямом направлении" },
+            { "value": 6,  "label": "Вращение на частоте JOG в обратном направлении" },
+            { "value": 16, "label": "Сброс аварии" }
+          ],
+          "default": 0
+        },
+        {
+          "id": "STATUS",
+          "name": "Текущее состояние ПЧ",
+          "description": "Параметр F0.28. bit0: направление (0=прямое, 1=обратное). bit1: состояние (0=стоп, 1=работа)",
+          "register": 28,
+          "registerHex": "001Ch",
+          "paramCode": "F0.28",
+          "access": "read",
+          "type": "bitmask",
+          "bits": [
+            {
+              "bit": 0,
+              "name": "direction",
+              "description": "Направление вращения",
+              "values": { "0": "Прямое", "1": "Обратное" }
+            },
+            {
+              "bit": 1,
+              "name": "run",
+              "description": "Состояние",
+              "values": { "0": "Остановлен", "1": "Работает" }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "control",
       "name": "Управление (RS-485)",
       "description": "Специальные регистры управления через Modbus",

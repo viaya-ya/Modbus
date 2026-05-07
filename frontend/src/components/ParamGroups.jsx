@@ -46,7 +46,8 @@ export default function ParamGroups({ device, modbusConnected }) {
 
   const items = filteredGroups.map(group => ({
     key: group.id,
-    label: `${group.id} — ${group.name}`,
+    // label: `${group.id} — ${group.name}`,
+    label: `${group.name}`,
     extra: (
       <Button
         size="small"
