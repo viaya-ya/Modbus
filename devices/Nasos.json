@@ -1,9 +1,9 @@
 {
-  "id": "elhart-emd-pump 2",
-  "name": "ELHART EMD-PUMP 2",
+  "id": "nasos",
+  "name": "Nasos",
   "description": "Преобразователь частоты для насосов",
   "connection": {
-    "slaveId": 1,
+    "slaveId": 2,
     "baudRate": 9600,
     "dataBits": 8,
     "stopBits": 1,
@@ -44,7 +44,7 @@
   "alerts": [
     {
       "id": "fault-active",
-      "paramId": "F0.10",
+      "paramId": "F0.17",
       "condition": "gt",
       "threshold": 0,
       "level": "error",
@@ -52,7 +52,7 @@
     },
     {
       "id": "temp-high",
-      "paramId": "F0.08",
+      "paramId": "F0.09",
       "condition": "gt",
       "threshold": 70,
       "level": "warning",
@@ -60,7 +60,7 @@
     },
     {
       "id": "current-high",
-      "paramId": "F0.03",
+      "paramId": "F0.02",
       "condition": "gt",
       "threshold": 20,
       "level": "warning",
@@ -169,7 +169,16 @@
           "register": 10,
           "access": "read",
           "type": "bitmask",
-          "description": "bit0=FWD, bit1=REV, bit2=S1, bit3=S2, bit4=S3, bit5=S4, bit6=S5, bit7=S6"
+          "bits": [
+            { "bit": 0, "name": "FWD",  "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 1, "name": "REV",  "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 2, "name": "S1",   "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 3, "name": "S2",   "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 4, "name": "S3",   "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 5, "name": "S4",   "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 6, "name": "S5",   "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 7, "name": "S6",   "values": { "0": "выкл", "1": "вкл" } }
+          ]
         },
         {
           "id": "F0.11",
@@ -177,7 +186,19 @@
           "register": 11,
           "access": "read",
           "type": "bitmask",
-          "description": "bit0=M01, bit1=M02, bit2=YA/YC, bit3-bit10=KA1-KA8"
+          "bits": [
+            { "bit": 0,  "name": "M01",  "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 1,  "name": "M02",  "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 2,  "name": "YA/YC","values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 3,  "name": "KA1",  "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 4,  "name": "KA2",  "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 5,  "name": "KA3",  "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 6,  "name": "KA4",  "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 7,  "name": "KA5",  "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 8,  "name": "KA6",  "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 9,  "name": "KA7",  "values": { "0": "выкл", "1": "вкл" } },
+            { "bit": 10, "name": "KA8",  "values": { "0": "выкл", "1": "вкл" } }
+          ]
         },
         {
           "id": "F0.12",
@@ -280,7 +301,18 @@
           "register": 24,
           "access": "read",
           "type": "bitmask",
-          "description": "bit0=UC, bit1=OC, bit4=OU, bit6=LU, bit7=OL, bit8=OT, bit9=OH, bit10=AVI, bit11=CO, bit15=авария активна"
+          "bits": [
+            { "bit": 0,  "name": "UC",  "values": { "0": "норма", "1": "авария" } },
+            { "bit": 1,  "name": "OC",  "values": { "0": "норма", "1": "авария" } },
+            { "bit": 4,  "name": "OU",  "values": { "0": "норма", "1": "авария" } },
+            { "bit": 6,  "name": "LU",  "values": { "0": "норма", "1": "авария" } },
+            { "bit": 7,  "name": "OL",  "values": { "0": "норма", "1": "авария" } },
+            { "bit": 8,  "name": "OT",  "values": { "0": "норма", "1": "авария" } },
+            { "bit": 9,  "name": "OH",  "values": { "0": "норма", "1": "авария" } },
+            { "bit": 10, "name": "AVI", "values": { "0": "норма", "1": "авария" } },
+            { "bit": 11, "name": "CO",  "values": { "0": "норма", "1": "авария" } },
+            { "bit": 15, "name": "FAULT","values": { "0": "нет аварии", "1": "авария активна" } }
+          ]
         },
         {
           "id": "F0.25",

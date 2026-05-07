@@ -9,6 +9,7 @@ import { DeviceConfig, DeviceParam } from './device.types';
 export class DevicesService implements OnModuleInit, OnModuleDestroy {
   readonly events = new EventEmitter();
   private devices = new Map<string, DeviceConfig>();
+  private fileToId = new Map<string, string>();
   private watcher: FSWatcher | null = null;
   readonly devicesPath: string;
 
@@ -37,6 +38,9 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
     try {
       const content = fs.readFileSync(filePath, 'utf-8');
       const config = JSON.parse(content) as DeviceConfig;
+      const prevId = this.fileToId.get(filePath);
+      if (prevId && prevId !== config.id) this.devices.delete(prevId);
+      this.fileToId.set(filePath, config.id);
       this.devices.set(config.id, config);
       return config;
     } catch {
@@ -64,12 +68,11 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
     });
 
     this.watcher.on('unlink', (filePath: string) => {
-      for (const [id] of this.devices) {
-        if (path.join(this.devicesPath, `${id}.json`) === filePath) {
-          this.devices.delete(id);
-          this.events.emit('device:removed', id);
-          break;
-        }
+      const id = this.fileToId.get(filePath);
+      if (id) {
+        this.devices.delete(id);
+        this.fileToId.delete(filePath);
+        this.events.emit('device:removed', id);
       }
     });
   }

@@ -3,8 +3,19 @@ import { Row, Col, Button, InputNumber, Select, Typography, Spin, message, Space
 import api from '../api'
 import { addLog } from '../log'
 
+function bitsToInt(bits, bitState) {
+  return bits.reduce((acc, b) => acc | ((bitState[b.bit] ?? 0) << b.bit), 0)
+}
+
+function intToBitState(bits, raw) {
+  const state = {}
+  bits.forEach(b => { state[b.bit] = (Math.round(raw) >> b.bit) & 1 })
+  return state
+}
+
 export default function ParamRow({ device, param, modbusConnected, injectedValue }) {
   const [value, setValue] = useState(null)
+  const [bitState, setBitState] = useState({})
 
   useEffect(() => {
     if (injectedValue !== undefined) setValue(injectedValue)
@@ -18,6 +29,11 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
     try {
       const res = await api.post('/modbus/read', { deviceId: device.id, paramId: param.id })
       setValue(res.data.value)
+      if (param.type === 'bitmask' && param.bits) {
+        const state = intToBitState(param.bits, res.data.value)
+        setBitState(state)
+        setEditValue(res.data.value)
+      }
       addLog('success', `Прочитано ${param.id} (${param.name}): ${res.data.value} ${param.unit ?? ''}`)
     } catch (e) {
       const msg = e.response?.data?.message ?? 'Ошибка чтения'
@@ -76,6 +92,7 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
       </Col>
       <Col flex="auto">
         <Typography.Text style={{ fontSize: 13 }}>{param.name}</Typography.Text>
+          {param?.unit && <Typography.Text style={{ fontSize: 13 }}> {", "}{param?.unit}</Typography.Text>}
       </Col>
       <Col style={{ width: 160 }}>
         {reading ? (
@@ -106,6 +123,27 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
                   options={param.options?.map(o => ({ value: o.value, label: o.label }))}
                   onChange={val => setEditValue(val)}
                 />
+              ) : param.type === 'bitmask' && param.bits ? (
+                <Space size={4} wrap>
+                  {param.bits.map(b => (
+                    <Select
+                      key={b.bit}
+                      size="small"
+                      style={{ width: 130 }}
+                      placeholder={b.name}
+                      value={bitState[b.bit] ?? null}
+                      options={Object.entries(b.values ?? { 0: '0', 1: '1' }).map(([k, v]) => ({
+                        value: Number(k),
+                        label: `${b.name}: ${v}`,
+                      }))}
+                      onChange={val => {
+                        const next = { ...bitState, [b.bit]: val }
+                        setBitState(next)
+                        setEditValue(bitsToInt(param.bits, next))
+                      }}
+                    />
+                  ))}
+                </Space>
               ) : (
                 <InputNumber
                   size="small"

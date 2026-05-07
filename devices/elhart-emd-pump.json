@@ -71,12 +71,12 @@
     {
       "id": "vfd-control",
       "name": "Управление ПЧ",
-      "description": "Регистры управления через Modbus RS-485. Источник команд P102=2, источник частоты P101=5",
+      "description": "Регистры управления через Modbus RS-485. Источник команд F1.00=2 (RS-485), источник частоты F1.01=3 (RS-485)",
       "params": [
         {
           "id": "FREQ_SET",
           "name": "Задание выходной частоты",
-          "description": "Условие: P101 = 5. Диапазон 0…40000 (= 0…400.00 Гц, шаг 0.01 Гц)",
+          "description": "Условие: F1.01=3 (RS-485). Диапазон 0…40000 (= 0…400.00 Гц, шаг 0.01 Гц)",
           "register": 8193,
           "registerHex": "2001h",
           "access": "read-write",
@@ -131,38 +131,6 @@
               "values": { "0": "Остановлен", "1": "Работает" }
             }
           ]
-        }
-      ]
-    },
-    {
-      "id": "control",
-      "name": "Управление (RS-485)",
-      "description": "Специальные регистры управления через Modbus",
-      "params": [
-        {
-          "id": "CMD",
-          "name": "Команда управления",
-          "register": 8192,
-          "access": "read-write",
-          "type": "enum",
-          "options": [
-            { "value": 0, "label": "Стоп" },
-            { "value": 1, "label": "Пуск" },
-            { "value": 2, "label": "Пуск вперёд" },
-            { "value": 3, "label": "Пуск назад" },
-            { "value": 5, "label": "Сброс ошибки" }
-          ]
-        },
-        {
-          "id": "FSET",
-          "name": "Задание частоты",
-          "register": 8193,
-          "access": "read-write",
-          "type": "float",
-          "scale": 0.01,
-          "unit": "Гц",
-          "min": 0,
-          "max": 400
         }
       ]
     },
@@ -923,7 +891,7 @@
           "default": 0
         },
         {
-          "id": "F3.15",
+          "id": "F3.17",
           "name": "Функция дискретного входа DI5",
           "register": 317,
           "access": "read-write",
