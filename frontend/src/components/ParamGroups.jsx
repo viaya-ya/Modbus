@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { Collapse, Button, Input, message, Typography, Popconfirm } from 'antd'
+import { Collapse, Button, Input, message, Typography, Popconfirm, Space } from 'antd'
 import { DownloadOutlined, SearchOutlined, RollbackOutlined } from '@ant-design/icons'
 import ParamRow from './ParamRow'
 import api from '../api'
@@ -183,16 +183,55 @@ export default function ParamGroups({ device, modbusConnected }) {
     message.success(`Сброшено ${ok} из ${toWrite.length} параметров группы ${group.name}`)
   }
 
+  async function resetAll() {
+    const allParams = device.groups.flatMap(g => g.params).filter(
+      p => p.access === 'read-write' && p.default !== undefined && p.default !== null
+    )
+    if (allParams.length === 0) {
+      message.info('Нет параметров с заводскими значениями')
+      return
+    }
+    setReadingGroup('__all__')
+    let ok = 0
+    for (const param of allParams) {
+      try {
+        await api.post('/modbus/write', { deviceId: device.id, paramId: param.id, value: param.default })
+        ok++
+      } catch { }
+    }
+    setReadingGroup(null)
+    message.success(`Сброшено ${ok} из ${allParams.length} параметров`)
+  }
+
   return (
     <>
-      <Input
-        prefix={<SearchOutlined style={{ color: '#bbb' }} />}
-        placeholder="Поиск параметра по коду или названию"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        allowClear
-        style={{ marginBottom: 12 }}
-      />
+      <Space style={{ marginBottom: 12, width: '100%' }}>
+        <Input
+          prefix={<SearchOutlined style={{ color: '#bbb' }} />}
+          placeholder="Поиск параметра по коду или названию"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          allowClear
+          style={{ width: 320 }}
+        />
+        <Popconfirm
+          title="Сброс всех параметров"
+          description="Записать заводские значения во ВСЕ параметры устройства?"
+          okText="Сбросить всё"
+          cancelText="Отмена"
+          okButtonProps={{ danger: true }}
+          onConfirm={resetAll}
+        >
+          <Button
+            icon={<RollbackOutlined />}
+            danger
+            disabled={!modbusConnected || readingGroup !== null}
+            loading={readingGroup === '__all__'}
+          >
+            Сбросить все до заводских
+          </Button>
+        </Popconfirm>
+      </Space>
       <Collapse
         items={items}
         defaultActiveKey={[device.groups[0]?.id]}
