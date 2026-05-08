@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Row, Col, Button, InputNumber, Select, Typography, Spin, message, Space, Tag } from 'antd'
+import { Row, Col, Button, InputNumber, Select, Typography, Spin, message, Space, Tag, Tooltip } from 'antd'
 import api from '../api'
 import { addLog } from '../log'
+
+export const COL = { id: 90, desc: null, def: 110, cur: 150, write: 260 }
 
 function bitsToInt(bits, bitState) {
   return bits.reduce((acc, b) => acc | ((bitState[b.bit] ?? 0) << b.bit), 0)
@@ -13,16 +15,26 @@ function intToBitState(bits, raw) {
   return state
 }
 
+function formatValue(type, val, unit, options, scale) {
+  if (val === null || val === undefined) return '—'
+  if (type === 'enum') {
+    const opt = options?.find(o => o.value === Math.round(val))
+    return opt ? opt.label : String(val)
+  }
+  if (type === 'float') return `${Number(val).toFixed(2)}${unit ? ' ' + unit : ''}`
+  return `${val}${unit ? ' ' + unit : ''}`
+}
+
 export default function ParamRow({ device, param, modbusConnected, injectedValue }) {
   const [value, setValue] = useState(null)
   const [bitState, setBitState] = useState({})
+  const [editValue, setEditValue] = useState(null)
+  const [reading, setReading] = useState(false)
+  const [writing, setWriting] = useState(false)
 
   useEffect(() => {
     if (injectedValue !== undefined) setValue(injectedValue)
   }, [injectedValue])
-  const [editValue, setEditValue] = useState(null)
-  const [reading, setReading] = useState(false)
-  const [writing, setWriting] = useState(false)
 
   async function handleRead() {
     setReading(true)
@@ -30,8 +42,7 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
       const res = await api.post('/modbus/read', { deviceId: device.id, paramId: param.id })
       setValue(res.data.value)
       if (param.type === 'bitmask' && param.bits) {
-        const state = intToBitState(param.bits, res.data.value)
-        setBitState(state)
+        setBitState(intToBitState(param.bits, res.data.value))
         setEditValue(res.data.value)
       }
       addLog('success', `Прочитано ${param.id} (${param.name}): ${res.data.value} ${param.unit ?? ''}`)
@@ -63,37 +74,15 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
 
   const isBitmask = param.type === 'bitmask' && param.bits
 
-  function formatDisplay() {
-    if (value === null) return '—'
-    if (param.type === 'enum') {
-      const opt = param.options?.find(o => o.value === Math.round(value))
-      return opt ? opt.label : String(value)
-    }
-    if (param.type === 'float') return `${Number(value).toFixed(2)} ${param.unit ?? ''}`
-    return `${value} ${param.unit ?? ''}`
-  }
-
-  function renderBitTags() {
-    if (!isBitmask || value === null) return null
-    const raw = Math.round(value)
+  function renderBitTags(raw) {
     return param.bits.map(b => {
-      const bitVal = (raw >> b.bit) & 1
+      const bitVal = (Math.round(raw) >> b.bit) & 1
       const label = b.values?.[String(bitVal)] ?? String(bitVal)
       const active = bitVal === 1
       return (
-        <Tag
-          key={b.bit}
-          color={active ? 'success' : 'default'}
-          style={{ margin: '2px', fontSize: 11 }}
-        >
-          <span style={{ opacity: active ? 1 : 0.5 }}>
-            {b.name}
-          </span>
-          <span style={{
-            marginLeft: 4,
-            fontWeight: 600,
-            color: active ? undefined : '#aaa',
-          }}>
+        <Tag key={b.bit} color={active ? 'success' : 'default'} style={{ margin: '2px', fontSize: 11 }}>
+          <span style={{ opacity: active ? 1 : 0.5 }}>{b.name}</span>
+          <span style={{ marginLeft: 4, fontWeight: 600, color: active ? undefined : '#aaa' }}>
             {active ? '●' : '○'} {label}
           </span>
         </Tag>
@@ -101,41 +90,48 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
     })
   }
 
+  const defaultFormatted = formatValue(param.type, param.default, param.unit, param.options, param.scale)
+  const currentFormatted = formatValue(param.type, value, param.unit, param.options, param.scale)
+
   return (
     <div style={{ borderBottom: '1px solid #f5f5f5' }}>
-      <Row
-        gutter={8}
-        align="middle"
-        style={{ padding: '8px 4px' }}
-      >
-        <Col style={{ width: 70 }}>
-          <Typography.Text code style={{ fontSize: 11 }}>
-            {param.id}
+      <Row gutter={0} align="middle" style={{ padding: '6px 4px', minHeight: 36 }}>
+
+        {/* Параметр / Адрес */}
+        <Col style={{ width: COL.id, flexShrink: 0 }}>
+          <Typography.Text code style={{ fontSize: 11, display: 'block' }}>{param.id}</Typography.Text>
+          <Typography.Text style={{ fontSize: 10, color: '#999' }}>рег. {param.register}</Typography.Text>
+        </Col>
+
+        {/* Описание */}
+        <Col flex="auto" style={{ paddingRight: 8 }}>
+          <Tooltip title={param.description ?? ''} placement="topLeft">
+            <Typography.Text style={{ fontSize: 12 }}>{param.name}</Typography.Text>
+          </Tooltip>
+        </Col>
+
+        {/* Заводское значение */}
+        <Col style={{ width: COL.def, flexShrink: 0 }}>
+          <Typography.Text style={{ fontSize: 12, color: '#888' }}>
+            {defaultFormatted}
           </Typography.Text>
         </Col>
-        <Col flex="auto">
-          <Typography.Text style={{ fontSize: 13 }}>{param.name}</Typography.Text>
-          {param?.unit && <Typography.Text style={{ fontSize: 13 }}> {", "}{param?.unit}</Typography.Text>}
-        </Col>
-        {!isBitmask && (
-          <Col style={{ width: 160 }}>
-            {reading ? (
-              <Spin size="small" />
-            ) : (
-              <Typography.Text style={{ color: value !== null ? '#1677ff' : '#bbb', fontSize: 13 }}>
-                {formatDisplay()}
+
+        {/* Значение на устройстве */}
+        <Col style={{ width: COL.cur, flexShrink: 0 }}>
+          {reading ? <Spin size="small" /> : (
+            !isBitmask && (
+              <Typography.Text style={{ fontSize: 12, color: value !== null ? '#1677ff' : '#bbb', fontWeight: value !== null ? 500 : 400 }}>
+                {currentFormatted}
               </Typography.Text>
-            )}
-          </Col>
-        )}
-        <Col>
-          <Space size={4}>
-            <Button
-              size="small"
-              onClick={handleRead}
-              disabled={!modbusConnected}
-              loading={reading}
-            >
+            )
+          )}
+        </Col>
+
+        {/* Значение для записи */}
+        <Col style={{ width: COL.write, flexShrink: 0 }}>
+          <Space size={4} wrap={false}>
+            <Button size="small" onClick={handleRead} disabled={!modbusConnected} loading={reading}>
               Читать
             </Button>
             {param.access === 'read-write' && (
@@ -154,7 +150,7 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
                       <Select
                         key={b.bit}
                         size="small"
-                        style={{ width: 130 }}
+                        style={{ width: 120 }}
                         placeholder={b.name}
                         value={bitState[b.bit] ?? null}
                         options={Object.entries(b.values ?? { 0: '0', 1: '1' }).map(([k, v]) => ({
@@ -194,12 +190,14 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
           </Space>
         </Col>
       </Row>
+
+      {/* Биты bitmask — отдельная строка */}
       {isBitmask && (
-        <div style={{ paddingLeft: 74, paddingBottom: 8, display: 'flex', flexWrap: 'wrap' }}>
+        <div style={{ paddingLeft: COL.id + 4, paddingBottom: 8, display: 'flex', flexWrap: 'wrap' }}>
           {reading
             ? <Spin size="small" />
             : value !== null
-              ? renderBitTags()
+              ? renderBitTags(value)
               : <Typography.Text style={{ color: '#bbb', fontSize: 12 }}>— нажмите Читать</Typography.Text>
           }
         </div>

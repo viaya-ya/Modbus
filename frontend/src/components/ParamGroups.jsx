@@ -1,8 +1,42 @@
 import { useState } from 'react'
-import { Collapse, Button, Input, message } from 'antd'
+import { Collapse, Button, Input, message, Row, Col, Typography } from 'antd'
 import { DownloadOutlined, SearchOutlined } from '@ant-design/icons'
-import ParamRow from './ParamRow'
+import ParamRow, { COL } from './ParamRow'
 import api from '../api'
+
+function ParamTableHeader() {
+  return (
+    <Row
+      gutter={0}
+      align="middle"
+      style={{
+        padding: '4px 4px',
+        background: '#fafafa',
+        borderBottom: '2px solid #e8e8e8',
+        borderTop: '1px solid #e8e8e8',
+        position: 'sticky',
+        top: 0,
+        zIndex: 1,
+      }}
+    >
+      <Col style={{ width: COL.id, flexShrink: 0 }}>
+        <Typography.Text style={{ fontSize: 11, color: '#888', fontWeight: 600 }}>Параметр / Адрес</Typography.Text>
+      </Col>
+      <Col flex="auto" style={{ paddingRight: 8 }}>
+        <Typography.Text style={{ fontSize: 11, color: '#888', fontWeight: 600 }}>Описание параметра</Typography.Text>
+      </Col>
+      <Col style={{ width: COL.def, flexShrink: 0 }}>
+        <Typography.Text style={{ fontSize: 11, color: '#888', fontWeight: 600 }}>Заводское значение</Typography.Text>
+      </Col>
+      <Col style={{ width: COL.cur, flexShrink: 0 }}>
+        <Typography.Text style={{ fontSize: 11, color: '#888', fontWeight: 600 }}>Значение на устройстве</Typography.Text>
+      </Col>
+      <Col style={{ width: COL.write, flexShrink: 0 }}>
+        <Typography.Text style={{ fontSize: 11, color: '#888', fontWeight: 600 }}>Значение для записи</Typography.Text>
+      </Col>
+    </Row>
+  )
+}
 
 export default function ParamGroups({ device, modbusConnected }) {
   const [readingGroup, setReadingGroup] = useState(null)
@@ -59,15 +93,20 @@ export default function ParamGroups({ device, modbusConnected }) {
         Прочитать всё
       </Button>
     ),
-    children: group.params.map(param => (
-      <ParamRow
-        key={param.id}
-        device={device}
-        param={param}
-        modbusConnected={modbusConnected}
-        injectedValue={groupValues[param.id]}
-      />
-    )),
+    children: (
+      <>
+        <ParamTableHeader />
+        {group.params.map(param => (
+          <ParamRow
+            key={param.id}
+            device={device}
+            param={param}
+            modbusConnected={modbusConnected}
+            injectedValue={groupValues[param.id]}
+          />
+        ))}
+      </>
+    ),
   }))
 
   return (
