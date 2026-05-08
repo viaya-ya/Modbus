@@ -37,7 +37,7 @@ export default function DeviceDetail({ device, modbusConnected }) {
             </Typography.Text>
           )}
         </div>
-        <BackupRestore device={device} modbusConnected={modbusConnected} />
+        {/*<BackupRestore device={device} modbusConnected={modbusConnected} />*/}
       </div>
       <ControlPanel device={device} modbusConnected={modbusConnected} />
       <Tabs items={items} defaultActiveKey="params" />

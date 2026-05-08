@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Row, Col, Button, InputNumber, Select, Typography, Spin, message, Space, Tag, Tooltip } from 'antd'
+import { Button, InputNumber, Select, Typography, Spin, message, Space, Tag, Tooltip } from 'antd'
 import api from '../api'
 import { addLog } from '../log'
-
-export const COL = { id: 90, desc: null, def: 110, cur: 150, write: 260 }
 
 function bitsToInt(bits, bitState) {
   return bits.reduce((acc, b) => acc | ((bitState[b.bit] ?? 0) << b.bit), 0)
@@ -15,7 +13,7 @@ function intToBitState(bits, raw) {
   return state
 }
 
-function formatValue(type, val, unit, options, scale) {
+function formatValue(type, val, unit, options) {
   if (val === null || val === undefined) return '—'
   if (type === 'enum') {
     const opt = options?.find(o => o.value === Math.round(val))
@@ -25,12 +23,16 @@ function formatValue(type, val, unit, options, scale) {
   return `${val}${unit ? ' ' + unit : ''}`
 }
 
-export default function ParamRow({ device, param, modbusConnected, injectedValue }) {
-  const [value, setValue] = useState(null)
+const DEFAULT_COLS = { id: 90, desc: 220, def: 120, cur: 150, write: 290 }
+
+export default function ParamRow({ device, param, modbusConnected, injectedValue, cols }) {
+  const [value, setValue]       = useState(null)
   const [bitState, setBitState] = useState({})
   const [editValue, setEditValue] = useState(null)
-  const [reading, setReading] = useState(false)
-  const [writing, setWriting] = useState(false)
+  const [reading, setReading]   = useState(false)
+  const [writing, setWriting]   = useState(false)
+
+  const C = cols ?? DEFAULT_COLS
 
   useEffect(() => {
     if (injectedValue !== undefined) setValue(injectedValue)
@@ -77,7 +79,7 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
   function renderBitTags(raw) {
     return param.bits.map(b => {
       const bitVal = (Math.round(raw) >> b.bit) & 1
-      const label = b.values?.[String(bitVal)] ?? String(bitVal)
+      const label  = b.values?.[String(bitVal)] ?? String(bitVal)
       const active = bitVal === 1
       return (
         <Tag key={b.bit} color={active ? 'success' : 'default'} style={{ margin: '2px', fontSize: 11 }}>
@@ -90,116 +92,142 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
     })
   }
 
-  const defaultFormatted = formatValue(param.type, param.default, param.unit, param.options, param.scale)
-  const currentFormatted = formatValue(param.type, value, param.unit, param.options, param.scale)
+  const defaultFormatted = formatValue(param.type, param.default, param.unit, param.options)
+  const currentFormatted = formatValue(param.type, value, param.unit, param.options)
+
+  /* ── ширина ввода в колонке "Записать" ───────────────────────── */
+  const inputW = Math.max(60, C.write - 130)   // место за вычетом кнопок Читать + Записать
 
   return (
     <div style={{ borderBottom: '1px solid #f5f5f5' }}>
-      <Row gutter={0} align="middle" style={{ padding: '6px 4px', minHeight: 36 }}>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '6px 4px', minHeight: 36 }}>
 
         {/* Параметр / Адрес */}
-        <Col style={{ width: COL.id, flexShrink: 0 }}>
+        <div style={{ width: C.id, flexShrink: 0 }}>
           <Typography.Text code style={{ fontSize: 11, display: 'block' }}>{param.id}</Typography.Text>
-          <Typography.Text style={{ fontSize: 10, color: '#999' }}>рег. {param.register}</Typography.Text>
-        </Col>
+          <Typography.Text style={{ fontSize: 10, color: '#999' }}>рег.{param.register}</Typography.Text>
+        </div>
 
         {/* Описание */}
-        <Col flex="auto" style={{ paddingRight: 8 }}>
-          <Tooltip title={param.description ?? ''} placement="topLeft">
-            <Typography.Text style={{ fontSize: 12 }}>{param.name}</Typography.Text>
+        <div style={{ width: C.desc, flexShrink: 0, paddingRight: 8, overflow: 'hidden' }}>
+          <Tooltip title={param.description ?? param.name} placement="topLeft">
+            <Typography.Text
+              style={{ fontSize: 12, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+            >
+              {param.name}
+            </Typography.Text>
           </Tooltip>
-        </Col>
+        </div>
 
         {/* Заводское значение */}
-        <Col style={{ width: COL.def, flexShrink: 0 }}>
-          <Typography.Text style={{ fontSize: 12, color: '#888' }}>
+        <div style={{ width: C.def, flexShrink: 0, overflow: 'hidden' }}>
+          <Typography.Text
+            style={{ fontSize: 12, color: '#888', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}
+          >
             {defaultFormatted}
           </Typography.Text>
-        </Col>
+        </div>
 
         {/* Значение на устройстве */}
-        <Col style={{ width: COL.cur, flexShrink: 0 }}>
+        <div style={{ width: C.cur, flexShrink: 0 }}>
           {reading ? <Spin size="small" /> : (
             !isBitmask && (
-              <Typography.Text style={{ fontSize: 12, color: value !== null ? '#1677ff' : '#bbb', fontWeight: value !== null ? 500 : 400 }}>
+              <Typography.Text style={{
+                fontSize: 12,
+                color: value !== null ? '#1677ff' : '#bbb',
+                fontWeight: value !== null ? 500 : 400,
+              }}>
                 {currentFormatted}
               </Typography.Text>
             )
           )}
-        </Col>
+        </div>
 
         {/* Значение для записи */}
-        <Col style={{ width: COL.write, flexShrink: 0 }}>
-          <Space size={4} wrap={false}>
-            <Button size="small" onClick={handleRead} disabled={!modbusConnected} loading={reading}>
-              Читать
-            </Button>
-            {param.access === 'read-write' && (
-              <>
-                {param.type === 'enum' ? (
-                  <Select
-                    size="small"
-                    style={{ width: 150 }}
-                    placeholder="Выбрать"
-                    options={param.options?.map(o => ({ value: o.value, label: o.label }))}
-                    onChange={val => setEditValue(val)}
-                  />
-                ) : isBitmask ? (
-                  <Space size={4} wrap>
-                    {param.bits.map(b => (
-                      <Select
-                        key={b.bit}
-                        size="small"
-                        style={{ width: 120 }}
-                        placeholder={b.name}
-                        value={bitState[b.bit] ?? null}
-                        options={Object.entries(b.values ?? { 0: '0', 1: '1' }).map(([k, v]) => ({
-                          value: Number(k),
-                          label: `${b.name}: ${v}`,
-                        }))}
-                        onChange={val => {
-                          const next = { ...bitState, [b.bit]: val }
-                          setBitState(next)
-                          setEditValue(bitsToInt(param.bits, next))
-                        }}
-                      />
-                    ))}
-                  </Space>
-                ) : (
-                  <InputNumber
-                    size="small"
-                    style={{ width: 90 }}
-                    min={param.min}
-                    max={param.max}
-                    step={param.scale ?? 1}
-                    placeholder={String(param.default ?? '')}
-                    onChange={val => setEditValue(val)}
-                  />
-                )}
-                <Button
+        <div style={{ width: C.write, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+          <Button size="small" onClick={handleRead} disabled={!modbusConnected} loading={reading}>
+            Читать
+          </Button>
+          {param.access === 'read-write' && !isBitmask && (
+            <>
+              {param.type === 'enum' ? (
+                <Select
                   size="small"
-                  type="primary"
-                  onClick={handleWrite}
-                  disabled={!modbusConnected || editValue === null || editValue === undefined}
-                  loading={writing}
-                >
-                  Записать
-                </Button>
-              </>
-            )}
-          </Space>
-        </Col>
-      </Row>
+                  style={{ width: inputW }}
+                  placeholder="Выбрать"
+                  options={param.options?.map(o => ({ value: o.value, label: o.label }))}
+                  onChange={val => setEditValue(val)}
+                />
+              ) : (
+                <InputNumber
+                  size="small"
+                  style={{ width: inputW }}
+                  min={param.min}
+                  max={param.max}
+                  step={param.scale ?? 1}
+                  placeholder={String(param.default ?? '')}
+                  onChange={val => setEditValue(val)}
+                />
+              )}
+              <Button
+                size="small"
+                type="primary"
+                onClick={handleWrite}
+                disabled={!modbusConnected || editValue === null || editValue === undefined}
+                loading={writing}
+              >
+                Записать
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* Биты bitmask — отдельная строка */}
       {isBitmask && (
-        <div style={{ paddingLeft: COL.id + 4, paddingBottom: 8, display: 'flex', flexWrap: 'wrap' }}>
-          {reading
-            ? <Spin size="small" />
-            : value !== null
-              ? renderBitTags(value)
-              : <Typography.Text style={{ color: '#bbb', fontSize: 12 }}>— нажмите Читать</Typography.Text>
-          }
+        <div style={{ paddingLeft: C.id + 4, paddingBottom: 8 }}>
+          {reading ? (
+            <Spin size="small" />
+          ) : value !== null ? (
+            <>
+              <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+                {renderBitTags(value)}
+              </div>
+              {param.access === 'read-write' && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                  {param.bits.map(b => (
+                    <Select
+                      key={b.bit}
+                      size="small"
+                      style={{ width: 130 }}
+                      placeholder={b.name}
+                      value={bitState[b.bit] ?? null}
+                      options={Object.entries(b.values ?? { 0: '0', 1: '1' }).map(([k, v]) => ({
+                        value: Number(k),
+                        label: `${b.name}: ${v}`,
+                      }))}
+                      onChange={val => {
+                        const next = { ...bitState, [b.bit]: val }
+                        setBitState(next)
+                        setEditValue(bitsToInt(param.bits, next))
+                      }}
+                    />
+                  ))}
+                  <Button
+                    size="small"
+                    type="primary"
+                    onClick={handleWrite}
+                    disabled={!modbusConnected || editValue === null || editValue === undefined}
+                    loading={writing}
+                  >
+                    Записать
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            <Typography.Text style={{ color: '#bbb', fontSize: 12 }}>— нажмите Читать</Typography.Text>
+          )}
         </div>
       )}
     </div>
