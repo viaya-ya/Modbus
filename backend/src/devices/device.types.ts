@@ -54,6 +54,8 @@ export interface DeviceConfig {
   id: string;
   name: string;
   description?: string;
+  template?: boolean;
+  templateId?: string;
   connection: DeviceConnection;
   images?: DeviceImages;
   errorCodes?: Record<string, string>;

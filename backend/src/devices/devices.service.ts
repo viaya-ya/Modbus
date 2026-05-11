@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, NotFoundException, BadRequestException } from '@nestjs/common';
 import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -93,5 +93,42 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
       if (param) return param;
     }
     return null;
+  }
+
+  getTemplates(): DeviceConfig[] {
+    return Array.from(this.devices.values()).filter(d => d.template === true);
+  }
+
+  createDevice(templateId: string, name: string, slaveId: number): DeviceConfig {
+    const template = this.getById(templateId);
+    if (!template) throw new NotFoundException(`Template '${templateId}' not found`);
+    if (!template.template) throw new BadRequestException(`Device '${templateId}' is not a template`);
+
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const id = `${slug}-${Date.now()}`;
+    const fileName = `${id}.json`;
+    const filePath = path.join(this.devicesPath, fileName);
+
+    const newDevice: DeviceConfig = {
+      ...template,
+      id,
+      name,
+      template: false,
+      templateId,
+      connection: { ...template.connection, slaveId },
+    };
+
+    fs.writeFileSync(filePath, JSON.stringify(newDevice, null, 2), 'utf-8');
+    return newDevice;
+  }
+
+  deleteDevice(id: string): void {
+    const device = this.getById(id);
+    if (!device) throw new NotFoundException(`Device '${id}' not found`);
+    if (device.template) throw new BadRequestException('Cannot delete a template device');
+
+    const filePath = Array.from(this.fileToId.entries()).find(([, v]) => v === id)?.[0];
+    if (!filePath) throw new NotFoundException(`File for device '${id}' not found`);
+    fs.unlinkSync(filePath);
   }
 }
