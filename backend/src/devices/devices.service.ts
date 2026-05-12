@@ -122,6 +122,31 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
     return newDevice;
   }
 
+  updateDevice(id: string, patch: { name?: string; slaveId?: number; baudRate?: number; dataBits?: number; stopBits?: number; parity?: string }): DeviceConfig {
+    const device = this.getById(id);
+    if (!device) throw new NotFoundException(`Device '${id}' not found`);
+    if (device.template) throw new BadRequestException('Cannot edit a template device');
+
+    const filePath = Array.from(this.fileToId.entries()).find(([, v]) => v === id)?.[0];
+    if (!filePath) throw new NotFoundException(`File for device '${id}' not found`);
+
+    const updated: DeviceConfig = {
+      ...device,
+      ...(patch.name !== undefined && { name: patch.name }),
+      connection: {
+        ...device.connection,
+        ...(patch.slaveId  !== undefined && { slaveId:  patch.slaveId }),
+        ...(patch.baudRate !== undefined && { baudRate: patch.baudRate }),
+        ...(patch.dataBits !== undefined && { dataBits: patch.dataBits }),
+        ...(patch.stopBits !== undefined && { stopBits: patch.stopBits }),
+        ...(patch.parity   !== undefined && { parity:   patch.parity }),
+      },
+    };
+
+    fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf-8');
+    return updated;
+  }
+
   deleteDevice(id: string): void {
     const device = this.getById(id);
     if (!device) throw new NotFoundException(`Device '${id}' not found`);

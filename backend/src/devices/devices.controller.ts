@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body, NotFoundException, Res } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, NotFoundException, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { DevicesService } from './devices.service';
 import * as fs from 'fs';
@@ -36,6 +36,11 @@ export class DevicesController {
   @Post()
   create(@Body() body: { templateId: string; name: string; slaveId: number }) {
     return this.devicesService.createDevice(body.templateId, body.name, body.slaveId);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() body: { name?: string; slaveId?: number; baudRate?: number; dataBits?: number; stopBits?: number; parity?: string }) {
+    return this.devicesService.updateDevice(id, body);
   }
 
   @Delete(':id')

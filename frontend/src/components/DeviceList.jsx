@@ -1,18 +1,28 @@
 import { useState } from 'react'
-import { List, Typography, Badge, Avatar, Tag, Button, Modal, Form, Input, InputNumber, Select, Popconfirm, Tooltip, Checkbox } from 'antd'
-import { LinkOutlined, DisconnectOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons'
+import { List, Typography, Badge, Avatar, Tag, Button, Modal, Form, Input, InputNumber, Select, Popconfirm, Tooltip, Checkbox, Collapse } from 'antd'
+import { LinkOutlined, DisconnectOutlined, PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import api from '../api'
+
+const PARITY_OPTIONS = [
+  { value: 'none', label: 'none' },
+  { value: 'even', label: 'even' },
+  { value: 'odd',  label: 'odd' },
+]
+
+const BAUD_OPTIONS = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200].map(v => ({ value: v, label: String(v) }))
 
 export default function DeviceList({ devices, selectedIds, onSelectionChange, connected }) {
   const [addOpen, setAddOpen]       = useState(false)
+  const [editDevice, setEditDevice] = useState(null)
   const [templates, setTemplates]   = useState([])
   const [submitting, setSubmitting] = useState(false)
-  const [form]                      = Form.useForm()
+  const [addForm]                   = Form.useForm()
+  const [editForm]                  = Form.useForm()
 
   async function openAdd() {
     const { data } = await api.get('/devices/templates')
     setTemplates(data)
-    form.resetFields()
+    addForm.resetFields()
     setAddOpen(true)
   }
 
@@ -21,6 +31,31 @@ export default function DeviceList({ devices, selectedIds, onSelectionChange, co
     try {
       await api.post('/devices', values)
       setAddOpen(false)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function openEdit(device, e) {
+    e.stopPropagation()
+    setEditDevice(device)
+    editForm.setFieldsValue({
+      name:     device.name,
+      slaveId:  device.connection.slaveId,
+      baudRate: device.connection.baudRate,
+      dataBits: device.connection.dataBits,
+      stopBits: device.connection.stopBits,
+      parity:   device.connection.parity,
+    })
+  }
+
+  async function handleEdit(values) {
+    setSubmitting(true)
+    try {
+      await api.patch(`/devices/${editDevice.id}`, values)
+      setEditDevice(null)
     } catch (e) {
       console.error(e)
     } finally {
@@ -99,6 +134,14 @@ export default function DeviceList({ devices, selectedIds, onSelectionChange, co
                   borderLeft: isSelected ? '3px solid #1677ff' : '3px solid transparent',
                 }}
                 actions={[
+                  <Tooltip key="edit" title="Редактировать">
+                    <Button
+                      size="small"
+                      type="text"
+                      icon={<EditOutlined />}
+                      onClick={e => openEdit(device, e)}
+                    />
+                  </Tooltip>,
                   <Popconfirm
                     key="del"
                     title="Удалить устройство?"
@@ -118,7 +161,7 @@ export default function DeviceList({ devices, selectedIds, onSelectionChange, co
                         onClick={e => e.stopPropagation()}
                       />
                     </Tooltip>
-                  </Popconfirm>
+                  </Popconfirm>,
                 ]}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
@@ -146,21 +189,19 @@ export default function DeviceList({ devices, selectedIds, onSelectionChange, co
         />
       )}
 
+      {/* Модалка добавления */}
       <Modal
         title="Добавить устройство"
         open={addOpen}
         onCancel={() => setAddOpen(false)}
-        onOk={() => form.submit()}
+        onOk={() => addForm.submit()}
         okText="Добавить"
         cancelText="Отмена"
         confirmLoading={submitting}
       >
-        <Form form={form} layout="vertical" onFinish={handleAdd} style={{ marginTop: 16 }}>
+        <Form form={addForm} layout="vertical" onFinish={handleAdd} style={{ marginTop: 16 }}>
           <Form.Item name="templateId" label="Тип устройства (шаблон)" rules={[{ required: true, message: 'Выберите шаблон' }]}>
-            <Select
-              placeholder="Выберите шаблон"
-              options={templates.map(t => ({ value: t.id, label: t.name }))}
-            />
+            <Select placeholder="Выберите шаблон" options={templates.map(t => ({ value: t.id, label: t.name }))} />
           </Form.Item>
           <Form.Item name="name" label="Название" rules={[{ required: true, message: 'Введите название' }]}>
             <Input placeholder="Например: Насос 1" />
@@ -168,6 +209,50 @@ export default function DeviceList({ devices, selectedIds, onSelectionChange, co
           <Form.Item name="slaveId" label="Slave ID (адрес на шине)" rules={[{ required: true, message: 'Введите Slave ID' }]}>
             <InputNumber min={1} max={247} style={{ width: '100%' }} placeholder="1–247" />
           </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Модалка редактирования */}
+      <Modal
+        title={`Редактировать: ${editDevice?.name}`}
+        open={!!editDevice}
+        onCancel={() => setEditDevice(null)}
+        onOk={() => editForm.submit()}
+        okText="Сохранить"
+        cancelText="Отмена"
+        confirmLoading={submitting}
+      >
+        <Form form={editForm} layout="vertical" onFinish={handleEdit} style={{ marginTop: 16 }}>
+          <Form.Item name="name" label="Название" rules={[{ required: true, message: 'Введите название' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="slaveId" label="Slave ID (адрес на шине)" rules={[{ required: true, message: 'Введите Slave ID' }]}>
+            <InputNumber min={1} max={247} style={{ width: '100%' }} />
+          </Form.Item>
+          <Collapse
+            size="small"
+            style={{ marginTop: 8 }}
+            items={[{
+              key: 'conn',
+              label: 'Параметры подключения',
+              children: (
+                <>
+                  <Form.Item name="baudRate" label="Скорость (baud rate)">
+                    <Select options={BAUD_OPTIONS} />
+                  </Form.Item>
+                  <Form.Item name="dataBits" label="Биты данных">
+                    <Select options={[7, 8].map(v => ({ value: v, label: String(v) }))} />
+                  </Form.Item>
+                  <Form.Item name="stopBits" label="Стоп-биты">
+                    <Select options={[1, 2].map(v => ({ value: v, label: String(v) }))} />
+                  </Form.Item>
+                  <Form.Item name="parity" label="Чётность (parity)" style={{ marginBottom: 0 }}>
+                    <Select options={PARITY_OPTIONS} />
+                  </Form.Item>
+                </>
+              ),
+            }]}
+          />
         </Form>
       </Modal>
     </>
