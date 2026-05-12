@@ -6,6 +6,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useWebSocketAdapter(new IoAdapter(app));
   app.enableCors({ origin: '*' });
+  app.setGlobalPrefix('api');
   await app.listen(3000);
   console.log('Backend running on http://localhost:3000');
 }

@@ -1,10 +1,59 @@
 {
-  "name": "Modbus",
+  "name": "modbus-controller",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Modbus RTU / RS-485 device manager",
+  "main": "electron/main.js",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build:frontend": "cd frontend && npm run build && cp -r dist ../backend/frontend-dist",
+    "build:backend": "cd backend && npm run build",
+    "rebuild:native": "electron-rebuild -f -w serialport -m backend/node_modules",
+    "build": "npm run build:frontend && npm run build:backend",
+    "electron:dev": "npm run build && electron .",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:linux": "npm run build && electron-builder --linux"
   },
-  "private": true
+  "devDependencies": {
+    "electron": "^42.0.1",
+    "electron-builder": "^26.8.1",
+    "electron-rebuild": "^3.2.9"
+  },
+  "build": {
+    "appId": "com.modbus.controller",
+    "productName": "Modbus Controller",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "dist/**/*",
+          "node_modules/**/*",
+          "frontend-dist/**/*",
+          "package.json"
+        ]
+      },
+      {
+        "from": "devices",
+        "to": "devices"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "electron/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerLanguages": ["ru_RU", "en_US"],
+      "language": "1049"
+    }
+  }
 }

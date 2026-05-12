@@ -1,10 +1,18 @@
 import { Module } from '@nestjs/common';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+import { existsSync } from 'fs';
 import { DevicesModule } from './devices/devices.module';
 import { ModbusModule } from './modbus/modbus.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { OlaModule } from './ola/ola.module';
 
+const staticPath = join(__dirname, '..', 'frontend-dist');
+const staticImports = existsSync(staticPath)
+  ? [ServeStaticModule.forRoot({ rootPath: staticPath, exclude: ['/api/(.*)'] })]
+  : [];
+
 @Module({
-  imports: [DevicesModule, ModbusModule, GatewayModule, OlaModule],
+  imports: [...staticImports, DevicesModule, ModbusModule, GatewayModule, OlaModule],
 })
 export class AppModule {}
