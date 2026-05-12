@@ -25,7 +25,7 @@ function formatValue(type, val, unit, options) {
 
 const DEFAULT_COLS = { id: 90, desc: 220, def: 120, cur: 150, write: 290 }
 
-export default function ParamRow({ device, param, modbusConnected, injectedValue, cols }) {
+export default function ParamRow({ device, param, modbusConnected, injectedValue, cols, onWrite }) {
   const [value, setValue]       = useState(null)
   const [bitState, setBitState] = useState({})
   const [editValue, setEditValue] = useState(null)
@@ -61,10 +61,14 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
     if (editValue === null || editValue === undefined) return
     setWriting(true)
     try {
-      await api.post('/modbus/write', { deviceId: device.id, paramId: param.id, value: editValue })
-      setValue(editValue)
-      message.success('Записано успешно')
-      addLog('success', `Записано ${param.id} (${param.name}): ${editValue} ${param.unit ?? ''}`)
+      if (onWrite) {
+        await onWrite(param.id, editValue)
+      } else {
+        await api.post('/modbus/write', { deviceId: device.id, paramId: param.id, value: editValue })
+        setValue(editValue)
+        message.success('Записано успешно')
+        addLog('success', `Записано ${param.id} (${param.name}): ${editValue} ${param.unit ?? ''}`)
+      }
     } catch (e) {
       const msg = e.response?.data?.message ?? 'Ошибка записи'
       message.error(msg)
@@ -145,7 +149,7 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
 
         {/* Значение для записи */}
         <div style={{ width: C.write, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-          <Button size="small" onClick={handleRead} disabled={!modbusConnected} loading={reading}>
+          <Button size="small" onClick={handleRead} disabled={!modbusConnected || !!onWrite} loading={reading}>
             Читать
           </Button>
           {param.access === 'read-write' && !isBitmask && (

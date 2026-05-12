@@ -51,7 +51,7 @@ function ParamTableHeader({ cols, onResizeStart }) {
   )
 }
 
-export default function ParamGroups({ device, modbusConnected }) {
+export default function ParamGroups({ device, modbusConnected, onWrite, onReadGroup, onResetGroup }) {
   const [readingGroup, setReadingGroup] = useState(null)
   const [groupValues, setGroupValues]   = useState({})
   const [search, setSearch]             = useState('')
@@ -120,7 +120,10 @@ export default function ParamGroups({ device, modbusConnected }) {
           icon={<DownloadOutlined />}
           loading={readingGroup === group.id}
           disabled={!modbusConnected || (readingGroup !== null && readingGroup !== group.id)}
-          onClick={e => readGroup(group, e)}
+          onClick={async e => {
+            if (onReadGroup) { setReadingGroup(group.id); await onReadGroup(group); setReadingGroup(null) }
+            else readGroup(group, e)
+          }}
         >
           Прочитать всё
         </Button>
@@ -130,7 +133,10 @@ export default function ParamGroups({ device, modbusConnected }) {
           okText="Сбросить"
           cancelText="Отмена"
           okButtonProps={{ danger: true }}
-          onConfirm={e => resetGroup(group, e ?? { stopPropagation: () => {} })}
+          onConfirm={async e => {
+            if (onResetGroup) { setReadingGroup(group.id); await onResetGroup(group); setReadingGroup(null) }
+            else resetGroup(group, e ?? { stopPropagation: () => {} })
+          }}
         >
           <Button
             size="small"
@@ -155,6 +161,7 @@ export default function ParamGroups({ device, modbusConnected }) {
               modbusConnected={modbusConnected}
               injectedValue={groupValues[param.id]}
               cols={cols}
+              onWrite={onWrite}
             />
           ))}
         </div>
@@ -229,15 +236,17 @@ export default function ParamGroups({ device, modbusConnected }) {
           allowClear
           style={{ width: 320 }}
         />
-        <Button
-          icon={<DownloadOutlined />}
-          disabled={!modbusConnected || readingGroup !== null}
-          loading={readingGroup === '__all__'}
-          onClick={readAll}
-        >
-          Прочитать все
-        </Button>
-        <Popconfirm
+        {!onWrite && (
+          <Button
+            icon={<DownloadOutlined />}
+            disabled={!modbusConnected || readingGroup !== null}
+            loading={readingGroup === '__all__'}
+            onClick={readAll}
+          >
+            Прочитать все
+          </Button>
+        )}
+        {!onWrite && <Popconfirm
           title="Сброс всех параметров"
           description="Записать заводские значения во ВСЕ параметры устройства?"
           okText="Сбросить всё"
@@ -253,7 +262,7 @@ export default function ParamGroups({ device, modbusConnected }) {
           >
             Сбросить все до заводских
           </Button>
-        </Popconfirm>
+        </Popconfirm>}
       </Space>
       <Collapse
         items={items}

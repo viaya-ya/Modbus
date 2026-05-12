@@ -3,6 +3,7 @@ import { Layout, Typography, Empty, Button, Badge, Segmented } from 'antd'
 import { FileTextOutlined, ControlOutlined, BulbOutlined } from '@ant-design/icons'
 import DeviceList from './components/DeviceList'
 import DeviceDetail from './components/DeviceDetail'
+import BulkPanel from './components/BulkPanel'
 import ConnectionPanel from './components/ConnectionPanel'
 import BusScanner from './components/BusScanner'
 import LogDrawer from './components/LogDrawer'
@@ -17,7 +18,7 @@ const { Header, Sider, Content } = Layout
 export default function App() {
   const [mode, setMode] = useState('modbus')
   const [devices, setDevices] = useState([])
-  const [selectedDevice, setSelectedDevice] = useState(null)
+  const [selectedIds, setSelectedIds] = useState(new Set())
   const [connected, setConnected] = useState(false)
   const [reconnecting, setReconnecting] = useState(false)
   const [reconnectAttempt, setReconnectAttempt] = useState(0)
@@ -29,9 +30,8 @@ export default function App() {
     socket.on('devices:list', list => setDevices(list))
     socket.on('devices:updated', list => {
       setDevices(list)
-      setSelectedDevice(prev =>
-        prev ? list.find(d => d.id === prev.id) ?? null : null,
-      )
+      const existingIds = new Set(list.map(d => d.id))
+      setSelectedIds(prev => new Set([...prev].filter(id => existingIds.has(id))))
     })
     socket.on('modbus:status', status => {
       setConnected(status.connected)
@@ -101,21 +101,29 @@ export default function App() {
             </div>
             <DeviceList
               devices={devices}
-              selectedId={selectedDevice?.id}
-              onSelect={setSelectedDevice}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
               connected={connected}
             />
           </Sider>
 
           <Content style={{ padding: 24, background: '#fafafa' }}>
-            {selectedDevice ? (
-              <DeviceDetail device={selectedDevice} modbusConnected={connected} />
-            ) : (
-              <Empty
-                description="Выберите устройство из списка слева"
-                style={{ marginTop: 80 }}
-              />
-            )}
+            {(() => {
+              const selectedDevices = devices.filter(d => selectedIds.has(d.id))
+              if (selectedIds.size > 1) {
+                return (
+                  <BulkPanel
+                    devices={selectedDevices}
+                    modbusConnected={connected}
+                    onDeselect={id => setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n })}
+                  />
+                )
+              }
+              if (selectedIds.size === 1 && selectedDevices[0]) {
+                return <DeviceDetail device={selectedDevices[0]} modbusConnected={connected} />
+              }
+              return <Empty description="Выберите устройство из списка слева" style={{ marginTop: 80 }} />
+            })()}
           </Content>
         </Layout>
       ) : (

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
-import { List, Typography, Badge, Avatar, Tag, Button, Modal, Form, Input, InputNumber, Select, Popconfirm, Tooltip } from 'antd'
+import { useState } from 'react'
+import { List, Typography, Badge, Avatar, Tag, Button, Modal, Form, Input, InputNumber, Select, Popconfirm, Tooltip, Checkbox } from 'antd'
 import { LinkOutlined, DisconnectOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import api from '../api'
 
-export default function DeviceList({ devices, selectedId, onSelect, connected }) {
+export default function DeviceList({ devices, selectedIds, onSelectionChange, connected }) {
   const [addOpen, setAddOpen]       = useState(false)
   const [templates, setTemplates]   = useState([])
   const [submitting, setSubmitting] = useState(false)
@@ -32,36 +32,46 @@ export default function DeviceList({ devices, selectedId, onSelect, connected })
     e.stopPropagation()
     try {
       await api.delete(`/devices/${device.id}`)
+      const next = new Set(selectedIds)
+      next.delete(device.id)
+      onSelectionChange(next)
     } catch (e) {
       console.error(e)
     }
   }
 
+  function handleRowClick(device) {
+    onSelectionChange(new Set([device.id]))
+  }
+
+  function handleCheckbox(device, checked) {
+    const next = new Set(selectedIds)
+    if (checked) next.add(device.id)
+    else next.delete(device.id)
+    onSelectionChange(next)
+  }
+
   const Icon = connected ? LinkOutlined : DisconnectOutlined
   const iconColor = connected ? '#52c41a' : '#ff4d4f'
+  const visibleDevices = devices.filter(d => !d.template)
 
   return (
     <>
       <div style={{ padding: '8px 16px 4px' }}>
-        <Button
-          type="dashed"
-          icon={<PlusOutlined />}
-          size="small"
-          block
-          onClick={openAdd}
-        >
+        <Button type="dashed" icon={<PlusOutlined />} size="small" block onClick={openAdd}>
           Добавить устройство
         </Button>
       </div>
 
-      {devices.filter(d => !d.template).length === 0 ? (
+      {visibleDevices.length === 0 ? (
         <Typography.Text type="secondary" style={{ display: 'block', padding: '16px' }}>
           Нет устройств
         </Typography.Text>
       ) : (
         <List
-          dataSource={devices.filter(d => !d.template)}
+          dataSource={visibleDevices}
           renderItem={device => {
+            const isSelected = selectedIds.has(device.id)
             const avatar = device.images?.device
               ? (
                 <Badge dot status={connected ? 'success' : 'error'} offset={[-4, 4]}>
@@ -81,18 +91,18 @@ export default function DeviceList({ devices, selectedId, onSelect, connected })
 
             return (
               <List.Item
-                onClick={() => onSelect(device)}
+                onClick={() => handleRowClick(device)}
                 style={{
                   cursor: 'pointer',
-                  padding: '12px 16px',
-                  background: selectedId === device.id ? '#e6f4ff' : 'transparent',
-                  borderLeft: selectedId === device.id ? '3px solid #1677ff' : '3px solid transparent',
+                  padding: '8px 16px 8px 8px',
+                  background: isSelected ? '#e6f4ff' : 'transparent',
+                  borderLeft: isSelected ? '3px solid #1677ff' : '3px solid transparent',
                 }}
                 actions={[
                   <Popconfirm
                     key="del"
                     title="Удалить устройство?"
-                    description={`Файл конфига будет удалён безвозвратно.`}
+                    description="Файл конфига будет удалён безвозвратно."
                     okText="Удалить"
                     cancelText="Отмена"
                     okButtonProps={{ danger: true }}
@@ -111,18 +121,25 @@ export default function DeviceList({ devices, selectedId, onSelect, connected })
                   </Popconfirm>
                 ]}
               >
-                <List.Item.Meta
-                  avatar={avatar}
-                  title={<span style={{ fontSize: 13 }}>{device.name}</span>}
-                  description={
-                    <span style={{ fontSize: 12 }}>
-                      <Tag style={{ fontSize: 11, padding: '0 4px', marginRight: 4 }}>
-                        ID {device.connection.slaveId ?? 1}
-                      </Tag>
-                      {device.description ?? device.connection.protocol}
-                    </span>
-                  }
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                  <Checkbox
+                    checked={isSelected}
+                    onClick={e => e.stopPropagation()}
+                    onChange={e => handleCheckbox(device, e.target.checked)}
+                  />
+                  <List.Item.Meta
+                    avatar={avatar}
+                    title={<span style={{ fontSize: 13 }}>{device.name}</span>}
+                    description={
+                      <span style={{ fontSize: 12 }}>
+                        <Tag style={{ fontSize: 11, padding: '0 4px', marginRight: 4 }}>
+                          ID {device.connection.slaveId ?? 1}
+                        </Tag>
+                        {device.description ?? device.connection.protocol}
+                      </span>
+                    }
+                  />
+                </div>
               </List.Item>
             )
           }}
