@@ -183,6 +183,21 @@ export default function ParamGroups({ device, modbusConnected }) {
     message.success(`Сброшено ${ok} из ${toWrite.length} параметров группы ${group.name}`)
   }
 
+  async function readAll() {
+    const allParams = device.groups.flatMap(g => g.params)
+    setReadingGroup('__all__')
+    const results = {}
+    for (const param of allParams) {
+      try {
+        const { data } = await api.post('/modbus/read', { deviceId: device.id, paramId: param.id })
+        results[param.id] = data.value
+      } catch { }
+    }
+    setGroupValues(prev => ({ ...prev, ...results }))
+    setReadingGroup(null)
+    message.success(`Прочитано ${Object.keys(results).length} из ${allParams.length} параметров`)
+  }
+
   async function resetAll() {
     const allParams = device.groups.flatMap(g => g.params).filter(
       p => p.access === 'read-write' && p.default !== undefined && p.default !== null
@@ -214,6 +229,14 @@ export default function ParamGroups({ device, modbusConnected }) {
           allowClear
           style={{ width: 320 }}
         />
+        <Button
+          icon={<DownloadOutlined />}
+          disabled={!modbusConnected || readingGroup !== null}
+          loading={readingGroup === '__all__'}
+          onClick={readAll}
+        >
+          Прочитать все
+        </Button>
         <Popconfirm
           title="Сброс всех параметров"
           description="Записать заводские значения во ВСЕ параметры устройства?"
