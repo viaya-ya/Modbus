@@ -30,19 +30,8 @@
       "node_modules/**/*"
     ],
     "extraResources": [
-      {
-        "from": "backend",
-        "to": "backend",
-        "filter": [
-          "**/*",
-          "!src/**",
-          "!test/**"
-        ]
-      },
-      {
-        "from": "devices",
-        "to": "devices"
-      }
+      { "from": "backend", "to": "backend" },
+      { "from": "devices", "to": "devices" }
     ],
     "win": {
       "target": "nsis"
