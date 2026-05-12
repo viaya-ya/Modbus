@@ -1,28 +1,38 @@
 const { app, BrowserWindow, dialog } = require('electron')
+const { fork } = require('child_process')
 const path = require('path')
 const http = require('http')
 
+let backendProcess = null
 let mainWindow = null
 
-// ── Запуск NestJS бэкенда прямо в главном процессе Electron ──────────────────
+// ── Запуск NestJS через fork с ELECTRON_RUN_AS_NODE ──────────────────────────
 function startBackend() {
   const backendDir = app.isPackaged
     ? path.join(process.resourcesPath, 'backend')
     : path.join(__dirname, '..', 'backend')
 
-  // Указываем Node.js где искать node_modules бэкенда
-  const nodeModulesPath = path.join(backendDir, 'node_modules')
-  process.env.NODE_PATH = nodeModulesPath
-  require('module')._initPaths()
+  const scriptPath = path.join(backendDir, 'dist', 'main.js')
 
-  // Меняем рабочую директорию чтобы бэкенд нашёл папку devices/
-  process.chdir(backendDir)
+  // ELECTRON_RUN_AS_NODE=1 заставляет Electron работать как Node.js
+  // execPath: process.execPath — используем Electron как рантайм Node.js
+  backendProcess = fork(scriptPath, [], {
+    cwd: backendDir,
+    execPath: process.execPath,
+    env: {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: '1',
+      NODE_ENV: 'production',
+    },
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+  })
 
-  // Загружаем скомпилированный NestJS — он стартует HTTP сервер на порту 3000
-  require(path.join(backendDir, 'dist', 'main.js'))
+  backendProcess.stdout?.on('data', d => console.log('[backend]', d.toString().trim()))
+  backendProcess.stderr?.on('data', d => console.error('[backend]', d.toString().trim()))
+  backendProcess.on('exit', code => console.log(`[backend] exited: ${code}`))
 }
 
-// ── Ожидание готовности бэкенда (опрос localhost:3000) ───────────────────────
+// ── Ожидание готовности бэкенда ───────────────────────────────────────────────
 function waitForBackend(maxAttempts = 40) {
   return new Promise((resolve, reject) => {
     let attempts = 0
@@ -63,7 +73,7 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null })
 }
 
-// ── Жизненный цикл приложения ─────────────────────────────────────────────────
+// ── Жизненный цикл ────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
   try {
     startBackend()
@@ -76,5 +86,10 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => {
+  if (backendProcess) backendProcess.kill()
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('before-quit', () => {
+  if (backendProcess) backendProcess.kill()
 })
