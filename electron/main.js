@@ -10,6 +10,11 @@ function startBackend() {
     ? path.join(process.resourcesPath, 'backend')
     : path.join(__dirname, '..', 'backend')
 
+  // Указываем Node.js где искать node_modules бэкенда
+  const nodeModulesPath = path.join(backendDir, 'node_modules')
+  process.env.NODE_PATH = nodeModulesPath
+  require('module')._initPaths()
+
   // Меняем рабочую директорию чтобы бэкенд нашёл папку devices/
   process.chdir(backendDir)
 
