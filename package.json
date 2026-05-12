@@ -34,10 +34,9 @@
         "from": "backend",
         "to": "backend",
         "filter": [
-          "dist/**/*",
-          "node_modules/**/*",
-          "frontend-dist/**/*",
-          "package.json"
+          "**/*",
+          "!src/**",
+          "!test/**"
         ]
       },
       {
@@ -46,8 +45,7 @@
       }
     ],
     "win": {
-      "target": "nsis",
-      "icon": "electron/icon.ico"
+      "target": "nsis"
     },
     "nsis": {
       "oneClick": false,
