@@ -1,6 +1,20 @@
 import { useState, useRef, useCallback } from 'react'
 import { Collapse, Button, Input, message, Typography, Popconfirm, Space } from 'antd'
-import { DownloadOutlined, SearchOutlined, RollbackOutlined } from '@ant-design/icons'
+import { DownloadOutlined, SearchOutlined, RollbackOutlined, HolderOutlined } from '@ant-design/icons'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import ParamRow from './ParamRow'
 import api from '../api'
 
@@ -10,6 +24,40 @@ const MIN_COLS     = { id: 60, desc: 100, def: 80,  cur: 100, write: 200 }
 function loadCols() {
   try { return { ...DEFAULT_COLS, ...JSON.parse(localStorage.getItem('param_col_widths') ?? '{}') } }
   catch { return DEFAULT_COLS }
+}
+
+function loadGroupOrder(deviceId) {
+  try { return JSON.parse(localStorage.getItem(`group_order_${deviceId}`) ?? 'null') ?? null }
+  catch { return null }
+}
+
+function SortableCollapseItem({ id, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        position: 'relative',
+      }}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        style={{
+          position: 'absolute', left: 0, top: 0, bottom: 0, width: 20,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'grab', zIndex: 2, color: '#bbb',
+        }}
+        title="Перетащить группу"
+      >
+        <HolderOutlined style={{ fontSize: 12 }} />
+      </div>
+      {children}
+    </div>
+  )
 }
 
 function HeaderCell({ label, width, onResizeStart }) {
@@ -56,7 +104,28 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
   const [groupValues, setGroupValues]   = useState({})
   const [search, setSearch]             = useState('')
   const [cols, setCols]                 = useState(loadCols)
+  const [groupOrder, setGroupOrder]     = useState(() => loadGroupOrder(device.id))
   const resizing = useRef(null)
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  const orderedGroups = groupOrder
+    ? [...device.groups].sort((a, b) => {
+        const ai = groupOrder.indexOf(a.id)
+        const bi = groupOrder.indexOf(b.id)
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+      })
+    : device.groups
+
+  function handleDragEnd(event) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = orderedGroups.findIndex(g => g.id === active.id)
+    const newIndex = orderedGroups.findIndex(g => g.id === over.id)
+    const newOrder = arrayMove(orderedGroups, oldIndex, newIndex).map(g => g.id)
+    setGroupOrder(newOrder)
+    localStorage.setItem(`group_order_${device.id}`, JSON.stringify(newOrder))
+  }
 
   const startResize = useCallback((key) => (e) => {
     e.preventDefault()
@@ -97,7 +166,7 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
   }
 
   const query = search.trim().toLowerCase()
-  const filteredGroups = device.groups
+  const filteredGroups = orderedGroups
     .map(group => ({
       ...group,
       params: query
@@ -264,11 +333,26 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
           </Button>
         </Popconfirm>}
       </Space>
-      <Collapse
-        items={items}
-        defaultActiveKey={[device.groups[0]?.id]}
-        activeKey={query ? filteredGroups.map(g => g.id) : undefined}
-      />
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={filteredGroups.map(g => g.id)} strategy={verticalListSortingStrategy}>
+          <div style={{ paddingLeft: 20 }}>
+            {filteredGroups.map((group, i) => {
+              const item = items.find(it => it.key === group.id)
+              if (!item) return null
+              return (
+                <SortableCollapseItem key={group.id} id={group.id}>
+                  <Collapse
+                    items={[item]}
+                    defaultActiveKey={i === 0 ? [group.id] : []}
+                    activeKey={query ? [group.id] : undefined}
+                    style={{ marginBottom: 4 }}
+                  />
+                </SortableCollapseItem>
+              )
+            })}
+          </div>
+        </SortableContext>
+      </DndContext>
     </>
   )
 }

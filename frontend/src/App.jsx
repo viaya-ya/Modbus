@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Layout, Typography, Empty, Button, Badge, Segmented } from 'antd'
+import { Layout, Typography, Empty, Button, Badge, Segmented, Tooltip } from 'antd'
 import { FileTextOutlined, ControlOutlined, BulbOutlined } from '@ant-design/icons'
 import DeviceList from './components/DeviceList'
 import DeviceDetail from './components/DeviceDetail'
@@ -19,6 +19,15 @@ export default function App() {
   const [mode, setMode] = useState('modbus')
   const [devices, setDevices] = useState([])
   const [selectedIds, setSelectedIds] = useState(new Set())
+  const [siderSide, setSiderSide] = useState(() => localStorage.getItem('sider_side') ?? 'left')
+
+  function toggleSider() {
+    setSiderSide(s => {
+      const next = s === 'left' ? 'right' : 'left'
+      localStorage.setItem('sider_side', next)
+      return next
+    })
+  }
   const [connected, setConnected] = useState(false)
   const [reconnecting, setReconnecting] = useState(false)
   const [reconnectAttempt, setReconnectAttempt] = useState(0)
@@ -89,15 +98,28 @@ export default function App() {
       </Header>
 
       {mode === 'modbus' ? (
-        <Layout style={{ flex: 1 }}>
+        <Layout style={{ flex: 1, flexDirection: siderSide === 'right' ? 'row-reverse' : 'row' }}>
           <Sider
             width={270}
-            style={{ background: '#fff', borderRight: '1px solid #f0f0f0' }}
+            style={{
+              background: '#fff',
+              borderRight: siderSide === 'left' ? '1px solid #f0f0f0' : 'none',
+              borderLeft: siderSide === 'right' ? '1px solid #f0f0f0' : 'none',
+            }}
           >
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Typography.Text strong style={{ fontSize: 13, color: '#666' }}>
                 УСТРОЙСТВА
               </Typography.Text>
+              <Button
+                type="text"
+                size="small"
+                title={siderSide === 'left' ? 'Переместить вправо' : 'Переместить влево'}
+                onClick={toggleSider}
+                style={{ color: '#999', fontSize: 14, padding: '0 4px' }}
+              >
+                {siderSide === 'left' ? '→' : '←'}
+              </Button>
             </div>
             <DeviceList
               devices={devices}
