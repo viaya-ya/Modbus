@@ -10,9 +10,9 @@
     "rebuild:native": "electron-rebuild -f -w serialport -m backend/node_modules",
     "build": "npm run build:frontend && npm run build:backend",
     "electron:dev": "npm run build && npx electron .",
-    "dist:win": "npm run build && electron-builder --win",
-    "dist:mac": "npm run build && electron-builder --mac",
-    "dist:linux": "npm run build && electron-builder --linux"
+    "dist:win": "npm run build && npx electron-builder --win",
+    "dist:mac": "npm run build && npx electron-builder --mac",
+    "dist:linux": "npm run build && npx electron-builder --linux"
   },
   "devDependencies": {
     "electron": "^42.0.1",
