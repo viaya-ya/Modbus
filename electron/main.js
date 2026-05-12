@@ -5,6 +5,7 @@ const http = require('http')
 
 let backendProcess = null
 let mainWindow = null
+let backendErrors = []
 
 // ── Запуск NestJS через fork с ELECTRON_RUN_AS_NODE ──────────────────────────
 function startBackend() {
@@ -14,8 +15,6 @@ function startBackend() {
 
   const scriptPath = path.join(backendDir, 'dist', 'main.js')
 
-  // ELECTRON_RUN_AS_NODE=1 заставляет Electron работать как Node.js
-  // execPath: process.execPath — используем Electron как рантайм Node.js
   backendProcess = fork(scriptPath, [], {
     cwd: backendDir,
     execPath: process.execPath,
@@ -28,12 +27,16 @@ function startBackend() {
   })
 
   backendProcess.stdout?.on('data', d => console.log('[backend]', d.toString().trim()))
-  backendProcess.stderr?.on('data', d => console.error('[backend]', d.toString().trim()))
+  backendProcess.stderr?.on('data', d => {
+    const msg = d.toString().trim()
+    console.error('[backend]', msg)
+    backendErrors.push(msg)
+  })
   backendProcess.on('exit', code => console.log(`[backend] exited: ${code}`))
 }
 
 // ── Ожидание готовности бэкенда ───────────────────────────────────────────────
-function waitForBackend(maxAttempts = 40) {
+function waitForBackend(maxAttempts = 120) {
   return new Promise((resolve, reject) => {
     let attempts = 0
     function check() {
@@ -44,7 +47,8 @@ function waitForBackend(maxAttempts = 40) {
       req.on('error', () => {
         attempts++
         if (attempts >= maxAttempts) {
-          reject(new Error('Backend не запустился за отведённое время'))
+          const errDetail = backendErrors.slice(-5).join('\n') || 'нет вывода'
+          reject(new Error(`Backend не запустился (${maxAttempts * 0.5} сек)\n\nПоследние ошибки:\n${errDetail}`))
         } else {
           setTimeout(check, 500)
         }
