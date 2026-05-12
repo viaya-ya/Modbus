@@ -9,7 +9,7 @@ import { OlaModule } from './ola/ola.module';
 
 const staticPath = join(__dirname, '..', 'frontend-dist');
 const staticImports = existsSync(staticPath)
-  ? [ServeStaticModule.forRoot({ rootPath: staticPath, exclude: ['/api/(.*)'] })]
+  ? [ServeStaticModule.forRoot({ rootPath: staticPath, exclude: ['/api/{*path}'] })]
   : [];
 
 @Module({
