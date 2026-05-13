@@ -199,9 +199,7 @@ export class ModbusGateway
     const device = this.devicesService.getById(deviceId);
     if (!device) return;
 
-    // Find group whose params have IDs starting with "F0"; fall back to first group
-    const f0 = device.groups.find(g => g.params?.some(p => p.id.startsWith('F0')))
-      ?? device.groups[0];
+    const f0 = device.groups.find(g => g.id === 'F0') ?? device.groups[0];
     let params = f0?.params ?? [];
     if (paramIds?.length) {
       const allParams = device.groups.flatMap(g => g.params);
