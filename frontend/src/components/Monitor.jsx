@@ -119,7 +119,7 @@ export default function Monitor({ device, modbusConnected }) {
       clearAlerts()
       addLog('info', `Мониторинг остановлен: ${device.name}`)
     } else {
-      socket.emit('monitor:start', { deviceId: device.id })
+      socket.emit('monitor:start', { deviceId: device.id, paramIds: monitorParams.map(p => p.id) })
       setRunning(true)
       addLog('info', `Мониторинг запущен: ${device.name}`)
     }
@@ -155,8 +155,12 @@ export default function Monitor({ device, modbusConnected }) {
     addLog('success', `Экспорт CSV: ${rows.length} строк, ${params.length} параметров`)
   }
 
+  // Prefer F0 group; fall back to first group with readable numeric params
   const f0Group = device.groups.find(g => g.id === 'F0')
-  const monitorParams = f0Group?.params.filter(p => p.id !== 'F0.00') ?? []
+    ?? device.groups.find(g => g.params?.some(p => p.access === 'read' && (p.type === 'float' || p.type === 'int')))
+  const monitorParams = (f0Group?.params ?? []).filter(
+    p => p.access === 'read' && (p.type === 'float' || p.type === 'int') && p.id !== 'F0.00'
+  )
   const configuredAlerts = device.alerts ?? []
 
   function getErrorText(code) {
@@ -230,7 +234,20 @@ export default function Monitor({ device, modbusConnected }) {
       )}
 
       {!monitorParams.length && (
-        <Typography.Text type="secondary">Нет параметров группы F0 для мониторинга</Typography.Text>
+        <Typography.Text type="secondary">
+          Нет параметров для мониторинга (нужны параметры с access: "read" и type: "float" или "int")
+        </Typography.Text>
+      )}
+
+      {running && monitorParams.length > 0 && Object.keys(data).length > 0 &&
+       monitorParams.every(p => data[p.id]?.error) && (
+        <Alert
+          type="warning"
+          showIcon
+          message="Устройство не отвечает на запросы группы F0"
+          description={`Все ${monitorParams.length} параметров возвращают ошибку: ${data[monitorParams[0]?.id]?.error ?? ''}. Проверьте настройки симулятора (регистры 0–11) или подключение к реальному устройству.`}
+          style={{ marginBottom: 8 }}
+        />
       )}
 
       <Row gutter={[16, 16]}>
