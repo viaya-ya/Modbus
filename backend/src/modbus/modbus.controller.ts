@@ -6,6 +6,7 @@ import {
   BadRequestException,
   NotFoundException,
   ServiceUnavailableException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { ModbusService } from './modbus.service';
 import { DevicesService } from '../devices/devices.service';
@@ -61,14 +62,18 @@ export class ModbusController {
     const param = this.devicesService.findParam(body.deviceId, body.paramId);
     if (!param) throw new NotFoundException(`Param '${body.paramId}' not found`);
     const slaveId = device.connection.slaveId ?? 1;
-    const rawValue = await this.modbusService.readRegister(param.register, slaveId);
-    const scale = param.scale ?? 1;
-    return {
-      paramId: param.id,
-      rawValue,
-      value: rawValue * scale,
-      unit: param.unit ?? '',
-    };
+    try {
+      const rawValue = await this.modbusService.readRegister(param.register, slaveId);
+      const scale = param.scale ?? 1;
+      return {
+        paramId: param.id,
+        rawValue,
+        value: rawValue * scale,
+        unit: param.unit ?? '',
+      };
+    } catch (e) {
+      throw this.wrapModbusError(e, param.id, param.register);
+    }
   }
 
   @Post('write')
@@ -85,7 +90,27 @@ export class ModbusController {
       throw new BadRequestException(`Param '${body.paramId}' is read-only`);
     const slaveId = device.connection.slaveId ?? 1;
     const scale = param.scale ?? 1;
-    await this.modbusService.writeRegister(param.register, Math.round(body.value / scale), slaveId);
+    try {
+      await this.modbusService.writeRegister(param.register, Math.round(body.value / scale), slaveId);
+    } catch (e) {
+      throw this.wrapModbusError(e, param.id, param.register);
+    }
     return { success: true };
+  }
+
+  private wrapModbusError(e: any, paramId: string, register: number) {
+    const code: number | undefined = e?.modbusCode;
+    const descriptions: Record<number, string> = {
+      1: 'недопустимая функция',
+      2: 'регистр не поддерживается устройством',
+      3: 'недопустимое значение данных',
+      4: 'ошибка устройства',
+    };
+    const detail = code !== undefined
+      ? `Modbus exception ${code}: ${descriptions[code] ?? 'неизвестная ошибка'}`
+      : (e?.message ?? String(e));
+    return new UnprocessableEntityException(
+      `${paramId} (рег. ${register}): ${detail}`,
+    );
   }
 }
