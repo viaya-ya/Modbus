@@ -103,6 +103,14 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
   const [readingGroup, setReadingGroup] = useState(null)
   const [groupValues, setGroupValues]   = useState({})
   const [search, setSearch]             = useState('')
+
+  const clearGroupValue = useCallback((paramId) => {
+    setGroupValues(prev => {
+      const next = { ...prev }
+      delete next[paramId]
+      return next
+    })
+  }, [])
   const [cols, setCols]                 = useState(loadCols)
   const [groupOrder, setGroupOrder]     = useState(() => loadGroupOrder(device.id))
   const resizing = useRef(null)
@@ -231,6 +239,7 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
               injectedValue={groupValues[param.id]}
               cols={cols}
               onWrite={onWrite}
+              onClearGroupValue={clearGroupValue}
             />
           ))}
         </div>

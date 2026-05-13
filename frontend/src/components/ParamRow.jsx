@@ -25,7 +25,7 @@ function formatValue(type, val, unit, options) {
 
 const DEFAULT_COLS = { id: 90, desc: 220, def: 120, cur: 150, write: 290 }
 
-export default function ParamRow({ device, param, modbusConnected, injectedValue, cols, onWrite }) {
+export default function ParamRow({ device, param, modbusConnected, injectedValue, cols, onWrite, onClearGroupValue }) {
   const [value, setValue]       = useState(null)
   const [bitState, setBitState] = useState({})
   const [editValue, setEditValue] = useState(null)
@@ -34,14 +34,20 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
 
   const C = cols ?? DEFAULT_COLS
 
+  // Sync bitmask controls when group-read updates the value
   useEffect(() => {
-    if (injectedValue !== undefined) setValue(injectedValue)
+    if (injectedValue !== undefined && param.type === 'bitmask' && param.bits) {
+      setBitState(intToBitState(param.bits, injectedValue))
+      setEditValue(injectedValue)
+      setValue(injectedValue)
+    }
   }, [injectedValue])
 
   async function handleRead() {
     setReading(true)
     try {
       const res = await api.post('/modbus/read', { deviceId: device.id, paramId: param.id })
+      onClearGroupValue?.(param.id)
       setValue(res.data.value)
       if (param.type === 'bitmask' && param.bits) {
         setBitState(intToBitState(param.bits, res.data.value))
@@ -65,6 +71,7 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
         await onWrite(param.id, editValue)
       } else {
         await api.post('/modbus/write', { deviceId: device.id, paramId: param.id, value: editValue })
+        onClearGroupValue?.(param.id)
         setValue(editValue)
         message.success('Записано успешно')
         addLog('success', `Записано ${param.id} (${param.name}): ${editValue} ${param.unit ?? ''}`)
@@ -97,7 +104,9 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
   }
 
   const defaultFormatted = formatValue(param.type, param.default, param.unit, param.options)
-  const currentFormatted = formatValue(param.type, value, param.unit, param.options)
+  // injectedValue (from group read) takes priority; cleared on individual read/write so value wins
+  const displayValue = injectedValue !== undefined ? injectedValue : value
+  const currentFormatted = formatValue(param.type, displayValue, param.unit, param.options)
 
   /* ── ширина ввода в колонке "Записать" ───────────────────────── */
   const inputW = Math.max(60, C.write - 130)   // место за вычетом кнопок Читать + Записать
@@ -138,8 +147,8 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
             !isBitmask && (
               <Typography.Text style={{
                 fontSize: 12,
-                color: value !== null ? '#1677ff' : '#bbb',
-                fontWeight: value !== null ? 500 : 400,
+                color: displayValue !== null ? '#1677ff' : '#bbb',
+                fontWeight: displayValue !== null ? 500 : 400,
               }}>
                 {currentFormatted}
               </Typography.Text>
