@@ -104,10 +104,20 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
     if (!template) throw new NotFoundException(`Template '${templateId}' not found`);
     if (!template.template) throw new BadRequestException(`Device '${templateId}' is not a template`);
 
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const id = `${slug}-${Date.now()}`;
-    const fileName = `${id}.json`;
-    const filePath = path.join(this.devicesPath, fileName);
+    // Spaces → underscores, strip chars forbidden in filenames (Windows + Unix)
+    const baseName = name.trim().replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') || `device_${Date.now()}`;
+
+    // Find a unique filename: "Насос_1.json", then "Насос_1_2.json", etc.
+    let fileName = `${baseName}.json`;
+    let filePath = path.join(this.devicesPath, fileName);
+    let counter = 2;
+    while (fs.existsSync(filePath)) {
+      fileName = `${baseName}_${counter}.json`;
+      filePath = path.join(this.devicesPath, fileName);
+      counter++;
+    }
+
+    const id = fileName.slice(0, -5); // strip ".json"
 
     const newDevice: DeviceConfig = {
       ...template,
