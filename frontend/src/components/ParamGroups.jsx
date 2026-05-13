@@ -258,12 +258,15 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
     }
     setReadingGroup(group.id)
     let ok = 0
+    const results = {}
     for (const param of toWrite) {
       try {
         await api.post('/modbus/write', { deviceId: device.id, paramId: param.id, value: param.default })
+        results[param.id] = param.default
         ok++
       } catch { }
     }
+    setGroupValues(prev => ({ ...prev, ...results }))
     setReadingGroup(null)
     message.success(`Сброшено ${ok} из ${toWrite.length} параметров группы ${group.name}`)
   }
@@ -293,12 +296,15 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
     }
     setReadingGroup('__all__')
     let ok = 0
+    const results = {}
     for (const param of allParams) {
       try {
         await api.post('/modbus/write', { deviceId: device.id, paramId: param.id, value: param.default })
+        results[param.id] = param.default
         ok++
       } catch { }
     }
+    setGroupValues(prev => ({ ...prev, ...results }))
     setReadingGroup(null)
     message.success(`Сброшено ${ok} из ${allParams.length} параметров`)
   }
