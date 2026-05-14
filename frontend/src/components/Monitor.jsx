@@ -2,6 +2,20 @@ import { useState, useEffect, useRef } from 'react'
 import { Button, Card, Row, Col, Statistic, Space, Typography, Alert, Tag, notification } from 'antd'
 import { PlayCircleOutlined, PauseCircleOutlined, DownloadOutlined, BellOutlined } from '@ant-design/icons'
 import { LineChart, Line, ResponsiveContainer, Tooltip, YAxis } from 'recharts'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  rectSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import socket from '../socket'
 import { addLog } from '../log'
 
@@ -21,16 +35,65 @@ function evalCondition(value, condition, threshold) {
   }
 }
 
+function loadCardOrder(deviceId) {
+  try { return JSON.parse(localStorage.getItem(`monitor_order_${deviceId}`) ?? 'null') ?? null }
+  catch { return null }
+}
+
+function SortableCard({ id, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  return (
+    <Col
+      ref={setNodeRef}
+      xs={24} sm={12} md={8} lg={6}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+    >
+      <div style={{ position: 'relative' }}>
+        <div
+          {...attributes}
+          {...listeners}
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 4,
+            width: 16,
+            height: 16,
+            cursor: 'grab',
+            zIndex: 10,
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 2,
+            padding: 2,
+          }}
+          title="Перетащить"
+        >
+          {[...Array(4)].map((_, i) => (
+            <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: '#ccc' }} />
+          ))}
+        </div>
+        {children}
+      </div>
+    </Col>
+  )
+}
+
 export default function Monitor({ device, modbusConnected }) {
   const [running, setRunning] = useState(false)
   const [data, setData] = useState({})
   const [history, setHistory] = useState({})
   const [error, setError] = useState(null)
   const [alertStatus, setAlertStatus] = useState({})
+  const [cardOrder, setCardOrder] = useState(() => loadCardOrder(device.id))
 
   const activeAlertsRef = useRef(new Set())
   const deviceRef = useRef(device)
   useEffect(() => { deviceRef.current = device })
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   function getParamName(paramId) {
     for (const group of deviceRef.current.groups) {
@@ -155,12 +218,31 @@ export default function Monitor({ device, modbusConnected }) {
     addLog('success', `Экспорт CSV: ${rows.length} строк, ${params.length} параметров`)
   }
 
+  function handleDragEnd(event) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = orderedParams.findIndex(p => p.id === active.id)
+    const newIndex = orderedParams.findIndex(p => p.id === over.id)
+    const newOrder = arrayMove(orderedParams, oldIndex, newIndex).map(p => p.id)
+    setCardOrder(newOrder)
+    localStorage.setItem(`monitor_order_${device.id}`, JSON.stringify(newOrder))
+  }
+
   // Prefer F0 group; fall back to first group with readable numeric params
   const f0Group = device.groups.find(g => g.id === 'F0')
     ?? device.groups.find(g => g.params?.some(p => p.access === 'read' && (p.type === 'float' || p.type === 'int')))
   const monitorParams = (f0Group?.params ?? []).filter(
     p => p.access === 'read' && (p.type === 'float' || p.type === 'int') && p.id !== 'F0.00'
   )
+
+  const orderedParams = cardOrder
+    ? [...monitorParams].sort((a, b) => {
+        const ai = cardOrder.indexOf(a.id)
+        const bi = cardOrder.indexOf(b.id)
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+      })
+    : monitorParams
+
   const configuredAlerts = device.alerts ?? []
 
   function getErrorText(code) {
@@ -250,84 +332,88 @@ export default function Monitor({ device, modbusConnected }) {
         />
       )}
 
-      <Row gutter={[16, 16]}>
-        {monitorParams.map((param, idx) => {
-          const entry = data[param.id]
-          const hist  = history[param.id] ?? []
-          const color = COLORS[idx % COLORS.length]
-          const isError = param.id === 'F0.10' && entry?.value
-          const errText = isError ? getErrorText(entry.value) : null
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={orderedParams.map(p => p.id)} strategy={rectSortingStrategy}>
+          <Row gutter={[16, 16]}>
+            {orderedParams.map((param, idx) => {
+              const entry = data[param.id]
+              const hist  = history[param.id] ?? []
+              const colorIdx = monitorParams.findIndex(p => p.id === param.id)
+              const color = COLORS[colorIdx % COLORS.length]
+              const isError = param.id === 'F0.10' && entry?.value
+              const errText = isError ? getErrorText(entry.value) : null
 
-          // подсветка если параметр участвует в сработавшем оповещении
-          const hasTriggeredAlert = configuredAlerts.some(
-            a => a.paramId === param.id && alertStatus[a.id]
-          )
+              const hasTriggeredAlert = configuredAlerts.some(
+                a => a.paramId === param.id && alertStatus[a.id]
+              )
 
-          return (
-            <Col key={param.id} xs={24} sm={12} md={8} lg={6}>
-              <Card
-                size="small"
-                title={<span style={{ fontSize: 12 }}>{param.name}</span>}
-                style={{
-                  minHeight: 110,
-                  borderColor: hasTriggeredAlert ? '#ff7875' : undefined,
-                }}
-                styles={{ body: { paddingBottom: 8 } }}
-              >
-                {entry?.error ? (
-                  <Typography.Text type="danger" style={{ fontSize: 12 }}>
-                    {entry.error}
-                  </Typography.Text>
-                ) : (
-                  <>
-                    <Statistic
-                      value={entry?.value ?? '—'}
-                      suffix={param.unit}
-                      precision={param.type === 'float' ? 2 : 0}
-                      valueStyle={{
-                        fontSize: 18,
-                        color: (isError && entry?.value !== 0) || hasTriggeredAlert
-                          ? '#ff4d4f'
-                          : entry ? color : '#bbb',
-                      }}
-                    />
+              return (
+                <SortableCard key={param.id} id={param.id}>
+                  <Card
+                    size="small"
+                    title={<span style={{ fontSize: 12 }}>{param.name}</span>}
+                    style={{
+                      minHeight: 110,
+                      borderColor: hasTriggeredAlert ? '#ff7875' : undefined,
+                    }}
+                    styles={{ body: { paddingBottom: 8 } }}
+                  >
+                    {entry?.error ? (
+                      <Typography.Text type="danger" style={{ fontSize: 12 }}>
+                        {entry.error}
+                      </Typography.Text>
+                    ) : (
+                      <>
+                        <Statistic
+                          value={entry?.value ?? '—'}
+                          suffix={param.unit}
+                          precision={param.type === 'float' ? 2 : 0}
+                          valueStyle={{
+                            fontSize: 18,
+                            color: (isError && entry?.value !== 0) || hasTriggeredAlert
+                              ? '#ff4d4f'
+                              : entry ? color : '#bbb',
+                          }}
+                        />
 
-                    {errText && entry?.value !== 0 && (
-                      <Tag color="error" style={{ marginTop: 4, fontSize: 11, whiteSpace: 'normal' }}>
-                        {errText}
-                      </Tag>
+                        {errText && entry?.value !== 0 && (
+                          <Tag color="error" style={{ marginTop: 4, fontSize: 11, whiteSpace: 'normal' }}>
+                            {errText}
+                          </Tag>
+                        )}
+                        {isError && entry?.value === 0 && (
+                          <Tag color="success" style={{ marginTop: 4, fontSize: 11 }}>Нет ошибки</Tag>
+                        )}
+
+                        {hist.length > 1 && (
+                          <ResponsiveContainer width="100%" height={36}>
+                            <LineChart data={hist}>
+                              <YAxis domain={['auto', 'auto']} hide />
+                              <Tooltip
+                                formatter={v => [`${Number(v).toFixed(param.type === 'float' ? 2 : 0)} ${param.unit ?? ''}`, param.name]}
+                                labelFormatter={l => `Время: ${l}`}
+                                contentStyle={{ fontSize: 11 }}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="v"
+                                stroke={hasTriggeredAlert ? '#ff4d4f' : color}
+                                dot={false}
+                                strokeWidth={1.5}
+                                isAnimationActive={false}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        )}
+                      </>
                     )}
-                    {isError && entry?.value === 0 && (
-                      <Tag color="success" style={{ marginTop: 4, fontSize: 11 }}>Нет ошибки</Tag>
-                    )}
-
-                    {hist.length > 1 && (
-                      <ResponsiveContainer width="100%" height={36}>
-                        <LineChart data={hist}>
-                          <YAxis domain={['auto', 'auto']} hide />
-                          <Tooltip
-                            formatter={v => [`${Number(v).toFixed(param.type === 'float' ? 2 : 0)} ${param.unit ?? ''}`, param.name]}
-                            labelFormatter={l => `Время: ${l}`}
-                            contentStyle={{ fontSize: 11 }}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="v"
-                            stroke={hasTriggeredAlert ? '#ff4d4f' : color}
-                            dot={false}
-                            strokeWidth={1.5}
-                            isAnimationActive={false}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    )}
-                  </>
-                )}
-              </Card>
-            </Col>
-          )
-        })}
-      </Row>
+                  </Card>
+                </SortableCard>
+              )
+            })}
+          </Row>
+        </SortableContext>
+      </DndContext>
     </Space>
   )
 }
