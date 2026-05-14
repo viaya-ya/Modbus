@@ -13,11 +13,18 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
   private watcher: FSWatcher | null = null;
   readonly devicesPath: string;
 
+  readonly templatesPath: string;
+  readonly unitsPath: string;
+
   constructor() {
     this.devicesPath = path.join(process.cwd(), '..', 'devices');
+    this.templatesPath = path.join(this.devicesPath, 'templates');
+    this.unitsPath = path.join(this.devicesPath, 'units');
   }
 
   async onModuleInit() {
+    fs.mkdirSync(this.templatesPath, { recursive: true });
+    fs.mkdirSync(this.unitsPath, { recursive: true });
     this.loadAll();
     await this.startWatcher();
   }
@@ -27,10 +34,12 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
   }
 
   private loadAll() {
-    if (!fs.existsSync(this.devicesPath)) return;
-    const files = fs.readdirSync(this.devicesPath).filter(f => f.endsWith('.json'));
-    for (const file of files) {
-      this.loadFile(path.join(this.devicesPath, file));
+    for (const dir of [this.templatesPath, this.unitsPath]) {
+      if (!fs.existsSync(dir)) continue;
+      const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        this.loadFile(path.join(dir, file));
+      }
     }
   }
 
@@ -50,7 +59,7 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
 
   private async startWatcher() {
     const chokidar = await import('chokidar');
-    this.watcher = chokidar.watch(this.devicesPath, {
+    this.watcher = chokidar.watch([this.templatesPath, this.unitsPath], {
       ignoreInitial: true,
       awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 },
     });
@@ -109,11 +118,11 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
 
     // Find a unique filename: "Насос_1.json", then "Насос_1_2.json", etc.
     let fileName = `${baseName}.json`;
-    let filePath = path.join(this.devicesPath, fileName);
+    let filePath = path.join(this.unitsPath, fileName);
     let counter = 2;
     while (fs.existsSync(filePath)) {
       fileName = `${baseName}_${counter}.json`;
-      filePath = path.join(this.devicesPath, fileName);
+      filePath = path.join(this.unitsPath, fileName);
       counter++;
     }
 
