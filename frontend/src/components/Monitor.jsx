@@ -298,7 +298,7 @@ export default function Monitor({ device, modbusConnected }) {
             onClear={() => handleVisibleChange(monitorParams.map(p => p.id))}
             maxTagCount="responsive"
             popupMatchSelectWidth={false}
-            style={{ minWidth: 200 }}
+            style={{ width: 220 }}
             options={monitorParams.map(p => ({ value: p.id, label: p.name }))}
           />
         )}
@@ -346,7 +346,7 @@ export default function Monitor({ device, modbusConnected }) {
 
       {!monitorParams.length && (
         <Typography.Text type="secondary">
-          Нет параметров для мониторинга (нужны параметры с access: "read" и type: "float" или "int")
+          Нет параметров для мониторинга (нужны параметры с access: "read" и type: "float" или "integer")
         </Typography.Text>
       )}
 

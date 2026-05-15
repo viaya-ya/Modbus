@@ -8,7 +8,7 @@ export interface DeviceParam {
   name: string;
   register: number;
   access: 'read' | 'read-write';
-  type: 'float' | 'int' | 'enum';
+  type: 'float' | 'integer' | 'enum';
   scale?: number;
   unit?: string;
   min?: number;
