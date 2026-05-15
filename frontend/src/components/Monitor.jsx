@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { Button, Card, Row, Col, Statistic, Space, Typography, Alert, Tag, notification } from 'antd'
-import { PlayCircleOutlined, PauseCircleOutlined, DownloadOutlined, BellOutlined } from '@ant-design/icons'
+import { Button, Card, Row, Col, Statistic, Space, Typography, Alert, Tag, notification, Select } from 'antd'
+import { PlayCircleOutlined, PauseCircleOutlined, DownloadOutlined, BellOutlined, EyeOutlined } from '@ant-design/icons'
 import { LineChart, Line, ResponsiveContainer, Tooltip, YAxis } from 'recharts'
 import {
   DndContext,
@@ -37,6 +37,11 @@ function evalCondition(value, condition, threshold) {
 
 function loadCardOrder(deviceId) {
   try { return JSON.parse(localStorage.getItem(`monitor_order_${deviceId}`) ?? 'null') ?? null }
+  catch { return null }
+}
+
+function loadVisibleParams(deviceId) {
+  try { return JSON.parse(localStorage.getItem(`monitor_visible_${deviceId}`) ?? 'null') ?? null }
   catch { return null }
 }
 
@@ -88,6 +93,7 @@ export default function Monitor({ device, modbusConnected }) {
   const [error, setError] = useState(null)
   const [alertStatus, setAlertStatus] = useState({})
   const [cardOrder, setCardOrder] = useState(() => loadCardOrder(device.id))
+  const [visibleParams, setVisibleParams] = useState(() => loadVisibleParams(device.id))
 
   const activeAlertsRef = useRef(new Set())
   const deviceRef = useRef(device)
@@ -230,9 +236,9 @@ export default function Monitor({ device, modbusConnected }) {
 
   // Prefer F0 group; fall back to first group with readable numeric params
   const f0Group = device.groups.find(g => g.id === 'F0')
-    ?? device.groups.find(g => g.params?.some(p => p.access === 'read' && (p.type === 'float' || p.type === 'int')))
+    ?? device.groups.find(g => g.params?.some(p => p.access === 'read' && (p.type === 'float' || p.type === 'integer')))
   const monitorParams = (f0Group?.params ?? []).filter(
-    p => p.access === 'read' && (p.type === 'float' || p.type === 'int') && p.id !== 'F0.00'
+    p => p.access === 'read' && (p.type === 'float' || p.type === 'integer') && p.id !== 'F0.00'
   )
 
   const orderedParams = cardOrder
@@ -242,6 +248,14 @@ export default function Monitor({ device, modbusConnected }) {
         return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
       })
     : monitorParams
+
+  const activeVisible = visibleParams ?? monitorParams.map(p => p.id)
+  const visibleOrdered = orderedParams.filter(p => activeVisible.includes(p.id))
+
+  function handleVisibleChange(selected) {
+    setVisibleParams(selected)
+    localStorage.setItem(`monitor_visible_${device.id}`, JSON.stringify(selected))
+  }
 
   const configuredAlerts = device.alerts ?? []
 
@@ -273,6 +287,20 @@ export default function Monitor({ device, modbusConnected }) {
         >
           Экспорт CSV
         </Button>
+        {monitorParams.length > 0 && (
+          <Select
+            mode="multiple"
+            allowClear
+            placeholder="Показать графики"
+            suffixIcon={<EyeOutlined />}
+            value={activeVisible}
+            onChange={handleVisibleChange}
+            onClear={() => handleVisibleChange(monitorParams.map(p => p.id))}
+            maxTagCount="responsive"
+            style={{ minWidth: 200 }}
+            options={monitorParams.map(p => ({ value: p.id, label: p.name }))}
+          />
+        )}
         {!modbusConnected && (
           <Typography.Text type="secondary">Требуется подключение к порту</Typography.Text>
         )}
@@ -333,9 +361,9 @@ export default function Monitor({ device, modbusConnected }) {
       )}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={orderedParams.map(p => p.id)} strategy={rectSortingStrategy}>
+        <SortableContext items={visibleOrdered.map(p => p.id)} strategy={rectSortingStrategy}>
           <Row gutter={[16, 16]}>
-            {orderedParams.map((param, idx) => {
+            {visibleOrdered.map((param, idx) => {
               const entry = data[param.id]
               const hist  = history[param.id] ?? []
               const colorIdx = monitorParams.findIndex(p => p.id === param.id)
