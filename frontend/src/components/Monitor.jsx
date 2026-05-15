@@ -297,6 +297,7 @@ export default function Monitor({ device, modbusConnected }) {
             onChange={handleVisibleChange}
             onClear={() => handleVisibleChange(monitorParams.map(p => p.id))}
             maxTagCount="responsive"
+            popupMatchSelectWidth={false}
             style={{ minWidth: 200 }}
             options={monitorParams.map(p => ({ value: p.id, label: p.name }))}
           />

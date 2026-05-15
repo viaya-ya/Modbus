@@ -168,6 +168,7 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
                   size="small"
                   style={{ width: inputW }}
                   placeholder="Выбрать"
+                  popupMatchSelectWidth={false}
                   options={param.options?.map(o => ({ value: o.value, label: o.label }))}
                   onChange={val => setEditValue(val)}
                 />
@@ -215,6 +216,7 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
                       style={{ width: 130 }}
                       placeholder={b.name}
                       value={bitState[b.bit] ?? null}
+                      popupMatchSelectWidth={false}
                       options={Object.entries(b.values ?? { 0: '0', 1: '1' }).map(([k, v]) => ({
                         value: Number(k),
                         label: `${b.name}: ${v}`,

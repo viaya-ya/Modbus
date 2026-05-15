@@ -201,7 +201,7 @@ export default function DeviceList({ devices, selectedIds, onSelectionChange, co
       >
         <Form form={addForm} layout="vertical" onFinish={handleAdd} style={{ marginTop: 16 }}>
           <Form.Item name="templateId" label="Тип устройства (шаблон)" rules={[{ required: true, message: 'Выберите шаблон' }]}>
-            <Select placeholder="Выберите шаблон" options={templates.map(t => ({ value: t.id, label: t.name }))} />
+            <Select placeholder="Выберите шаблон" popupMatchSelectWidth={false} options={templates.map(t => ({ value: t.id, label: t.name }))} />
           </Form.Item>
           <Form.Item name="name" label="Название" rules={[{ required: true, message: 'Введите название' }]}>
             <Input placeholder="Например: Насос 1" />
@@ -238,16 +238,16 @@ export default function DeviceList({ devices, selectedIds, onSelectionChange, co
               children: (
                 <>
                   <Form.Item name="baudRate" label="Скорость (baud rate)">
-                    <Select options={BAUD_OPTIONS} />
+                    <Select options={BAUD_OPTIONS} popupMatchSelectWidth={false} />
                   </Form.Item>
                   <Form.Item name="dataBits" label="Биты данных">
-                    <Select options={[7, 8].map(v => ({ value: v, label: String(v) }))} />
+                    <Select options={[7, 8].map(v => ({ value: v, label: String(v) }))} popupMatchSelectWidth={false} />
                   </Form.Item>
                   <Form.Item name="stopBits" label="Стоп-биты">
-                    <Select options={[1, 2].map(v => ({ value: v, label: String(v) }))} />
+                    <Select options={[1, 2].map(v => ({ value: v, label: String(v) }))} popupMatchSelectWidth={false} />
                   </Form.Item>
                   <Form.Item name="parity" label="Чётность (parity)" style={{ marginBottom: 0 }}>
-                    <Select options={PARITY_OPTIONS} />
+                    <Select options={PARITY_OPTIONS} popupMatchSelectWidth={false} />
                   </Form.Item>
                 </>
               ),
