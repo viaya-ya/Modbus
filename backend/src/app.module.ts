@@ -6,6 +6,8 @@ import { DevicesModule } from './devices/devices.module';
 import { ModbusModule } from './modbus/modbus.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { OlaModule } from './ola/ola.module';
+import { ProjectsModule } from './projects/projects.module';
+import { SettingsModule } from './settings/settings.module';
 
 const staticPath = join(__dirname, '..', 'frontend-dist');
 const staticImports = existsSync(staticPath)
@@ -13,6 +15,6 @@ const staticImports = existsSync(staticPath)
   : [];
 
 @Module({
-  imports: [...staticImports, DevicesModule, ModbusModule, GatewayModule, OlaModule],
+  imports: [...staticImports, SettingsModule, ProjectsModule, DevicesModule, ModbusModule, GatewayModule, OlaModule],
 })
 export class AppModule {}

@@ -4,94 +4,186 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { FSWatcher } from 'chokidar';
 import { DeviceConfig, DeviceParam } from './device.types';
+import { ProjectsService } from '../projects/projects.service';
+import { DeviceInstance } from '../projects/project.types';
 
 @Injectable()
 export class DevicesService implements OnModuleInit, OnModuleDestroy {
   readonly events = new EventEmitter();
-  private devices = new Map<string, DeviceConfig>();
-  private fileToId = new Map<string, string>();
-  private watcher: FSWatcher | null = null;
+
+  private templates = new Map<string, DeviceConfig>();
+  private templateFileToId = new Map<string, string>();
+
+  private instances = new Map<string, DeviceInstance>();
+  private instanceFileToId = new Map<string, string>();
+
+  private templateWatcher: FSWatcher | null = null;
+  private instanceWatcher: FSWatcher | null = null;
+
   readonly devicesPath: string;
-
   readonly templatesPath: string;
-  readonly unitsPath: string;
 
-  constructor() {
+  constructor(private readonly projectsService: ProjectsService) {
     this.devicesPath = path.join(process.cwd(), '..', 'devices');
     this.templatesPath = path.join(this.devicesPath, 'templates');
-    this.unitsPath = path.join(this.devicesPath, 'units');
   }
 
   async onModuleInit() {
     fs.mkdirSync(this.templatesPath, { recursive: true });
-    fs.mkdirSync(this.unitsPath, { recursive: true });
-    this.loadAll();
-    await this.startWatcher();
+    this.loadAllTemplates();
+    await this.startTemplateWatcher();
+    this.loadActiveProjectInstances();
+    await this.startInstanceWatcher();
+    this.projectsService.events.on('project:changed', async () => {
+      await this.reloadProject();
+    });
   }
 
   onModuleDestroy() {
-    this.watcher?.close();
+    this.templateWatcher?.close();
+    this.instanceWatcher?.close();
   }
 
-  private loadAll() {
-    for (const dir of [this.templatesPath, this.unitsPath]) {
-      if (!fs.existsSync(dir)) continue;
-      const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
-      for (const file of files) {
-        this.loadFile(path.join(dir, file));
-      }
+  // ─── Templates ─────────────────────────────────────────────────────────────
+
+  private loadAllTemplates() {
+    if (!fs.existsSync(this.templatesPath)) return;
+    for (const file of fs.readdirSync(this.templatesPath).filter(f => f.endsWith('.json'))) {
+      this.loadTemplateFile(path.join(this.templatesPath, file));
     }
   }
 
-  private loadFile(filePath: string): DeviceConfig | null {
+  private loadTemplateFile(filePath: string): DeviceConfig | null {
     try {
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const config = JSON.parse(content) as DeviceConfig;
-      const prevId = this.fileToId.get(filePath);
-      if (prevId && prevId !== config.id) this.devices.delete(prevId);
-      this.fileToId.set(filePath, config.id);
-      this.devices.set(config.id, config);
+      const config = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as DeviceConfig;
+      const prevId = this.templateFileToId.get(filePath);
+      if (prevId && prevId !== config.id) this.templates.delete(prevId);
+      this.templateFileToId.set(filePath, config.id);
+      this.templates.set(config.id, { ...config, template: true });
       return config;
     } catch {
       return null;
     }
   }
 
-  private async startWatcher() {
+  private async startTemplateWatcher() {
     const chokidar = await import('chokidar');
-    this.watcher = chokidar.watch([this.templatesPath, this.unitsPath], {
+    this.templateWatcher = chokidar.watch(this.templatesPath, {
       ignoreInitial: true,
       awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 },
     });
-
-    this.watcher.on('add', (filePath: string) => {
-      if (!filePath.endsWith('.json')) return;
-      const config = this.loadFile(filePath);
-      if (config) this.events.emit('device:added', config);
+    this.templateWatcher.on('add', (fp: string) => {
+      if (!fp.endsWith('.json')) return;
+      const c = this.loadTemplateFile(fp);
+      if (c) this.events.emit('device:added', c);
     });
-
-    this.watcher.on('change', (filePath: string) => {
-      if (!filePath.endsWith('.json')) return;
-      const config = this.loadFile(filePath);
-      if (config) this.events.emit('device:changed', config);
+    this.templateWatcher.on('change', (fp: string) => {
+      if (!fp.endsWith('.json')) return;
+      const c = this.loadTemplateFile(fp);
+      if (c) this.events.emit('device:changed', c);
     });
-
-    this.watcher.on('unlink', (filePath: string) => {
-      const id = this.fileToId.get(filePath);
+    this.templateWatcher.on('unlink', (fp: string) => {
+      const id = this.templateFileToId.get(fp);
       if (id) {
-        this.devices.delete(id);
-        this.fileToId.delete(filePath);
+        this.templates.delete(id);
+        this.templateFileToId.delete(fp);
         this.events.emit('device:removed', id);
       }
     });
   }
 
+  // ─── Instances ─────────────────────────────────────────────────────────────
+
+  private loadActiveProjectInstances() {
+    this.instances.clear();
+    this.instanceFileToId.clear();
+    const projectId = this.projectsService.getActiveProjectId();
+    if (!projectId) return;
+    for (const { instance, filePath } of this.projectsService.loadInstances(projectId)) {
+      this.instances.set(instance.id, instance);
+      this.instanceFileToId.set(filePath, instance.id);
+    }
+  }
+
+  private async startInstanceWatcher() {
+    this.instanceWatcher?.close();
+    this.instanceWatcher = null;
+    const projectPath = this.projectsService.getActiveProjectPath();
+    if (!projectPath) return;
+    const chokidar = await import('chokidar');
+    this.instanceWatcher = chokidar.watch(projectPath, {
+      ignoreInitial: true,
+      awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 },
+    });
+    this.instanceWatcher.on('add', (fp: string) => {
+      if (!fp.endsWith('.json') || fp.endsWith('project.json')) return;
+      this.loadInstanceFile(fp, 'added');
+    });
+    this.instanceWatcher.on('change', (fp: string) => {
+      if (!fp.endsWith('.json') || fp.endsWith('project.json')) return;
+      this.loadInstanceFile(fp, 'changed');
+    });
+    this.instanceWatcher.on('unlink', (fp: string) => {
+      const id = this.instanceFileToId.get(fp);
+      if (id) {
+        this.instances.delete(id);
+        this.instanceFileToId.delete(fp);
+        this.events.emit('device:removed', id);
+      }
+    });
+  }
+
+  private loadInstanceFile(filePath: string, event: 'added' | 'changed') {
+    try {
+      const instance = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as DeviceInstance;
+      const prevId = this.instanceFileToId.get(filePath);
+      if (prevId && prevId !== instance.id) this.instances.delete(prevId);
+      this.instanceFileToId.set(filePath, instance.id);
+      this.instances.set(instance.id, instance);
+      const merged = this.merge(instance);
+      if (merged) this.events.emit(`device:${event}`, merged);
+    } catch {}
+  }
+
+  private async reloadProject() {
+    this.instanceWatcher?.close();
+    this.instanceWatcher = null;
+    this.loadActiveProjectInstances();
+    await this.startInstanceWatcher();
+    this.events.emit('devices:reloaded');
+  }
+
+  // ─── Merge ─────────────────────────────────────────────────────────────────
+
+  private merge(instance: DeviceInstance): DeviceConfig | null {
+    const template = this.templates.get(instance.templateId);
+    if (!template) return null;
+    return {
+      ...template,
+      id: instance.id,
+      name: instance.name,
+      template: false,
+      templateId: instance.templateId,
+      connection: { ...template.connection, ...instance.connection },
+    };
+  }
+
+  // ─── Public API ────────────────────────────────────────────────────────────
+
   getAll(): DeviceConfig[] {
-    return Array.from(this.devices.values());
+    const result: DeviceConfig[] = [];
+    for (const t of this.templates.values()) result.push(t);
+    for (const inst of this.instances.values()) {
+      const merged = this.merge(inst);
+      if (merged) result.push(merged);
+    }
+    return result;
   }
 
   getById(id: string): DeviceConfig | null {
-    return this.devices.get(id) ?? null;
+    const inst = this.instances.get(id);
+    if (inst) return this.merge(inst);
+    return this.templates.get(id) ?? null;
   }
 
   findParam(deviceId: string, paramId: string): DeviceParam | null {
@@ -105,55 +197,50 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
   }
 
   getTemplates(): DeviceConfig[] {
-    return Array.from(this.devices.values()).filter(d => d.template === true);
+    return Array.from(this.templates.values());
   }
 
   createDevice(templateId: string, name: string, slaveId: number): DeviceConfig {
-    const template = this.getById(templateId);
-    if (!template) throw new NotFoundException(`Template '${templateId}' not found`);
-    if (!template.template) throw new BadRequestException(`Device '${templateId}' is not a template`);
+    const template = this.templates.get(templateId);
+    if (!template) throw new NotFoundException(`Шаблон '${templateId}' не найден`);
 
-    // Spaces → underscores, strip chars forbidden in filenames (Windows + Unix)
+    const projectId = this.projectsService.getActiveProjectId();
+    if (!projectId) throw new BadRequestException('Нет активного проекта. Создайте или выберите проект.');
+
     const baseName = name.trim().replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') || `device_${Date.now()}`;
-
-    // Find a unique filename: "Насос_1.json", then "Насос_1_2.json", etc.
-    let fileName = `${baseName}.json`;
-    let filePath = path.join(this.unitsPath, fileName);
+    let id = baseName;
     let counter = 2;
-    while (fs.existsSync(filePath)) {
-      fileName = `${baseName}_${counter}.json`;
-      filePath = path.join(this.unitsPath, fileName);
-      counter++;
+    while (this.instances.has(id)) {
+      id = `${baseName}_${counter++}`;
     }
 
-    const id = fileName.slice(0, -5); // strip ".json"
-
-    const newDevice: DeviceConfig = {
-      ...template,
+    const instance: DeviceInstance = {
       id,
       name,
-      template: false,
       templateId,
-      connection: { ...template.connection, slaveId },
+      connection: { slaveId },
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(newDevice, null, 2), 'utf-8');
-    return newDevice;
+    this.projectsService.writeInstance(projectId, instance);
+    return this.merge(instance)!;
   }
 
   updateDevice(id: string, patch: { name?: string; slaveId?: number; baudRate?: number; dataBits?: number; stopBits?: number; parity?: string }): DeviceConfig {
-    const device = this.getById(id);
-    if (!device) throw new NotFoundException(`Device '${id}' not found`);
-    if (device.template) throw new BadRequestException('Cannot edit a template device');
+    const instance = this.instances.get(id);
+    if (!instance) {
+      if (this.templates.has(id)) throw new BadRequestException('Нельзя редактировать шаблон');
+      throw new NotFoundException(`Устройство '${id}' не найдено`);
+    }
 
-    const filePath = Array.from(this.fileToId.entries()).find(([, v]) => v === id)?.[0];
-    if (!filePath) throw new NotFoundException(`File for device '${id}' not found`);
+    const projectId = this.projectsService.getActiveProjectId()!;
+    const filePath = Array.from(this.instanceFileToId.entries()).find(([, v]) => v === id)?.[0];
+    if (!filePath) throw new NotFoundException(`Файл устройства '${id}' не найден`);
 
-    const updated: DeviceConfig = {
-      ...device,
+    const updated: DeviceInstance = {
+      ...instance,
       ...(patch.name !== undefined && { name: patch.name }),
       connection: {
-        ...device.connection,
+        ...instance.connection,
         ...(patch.slaveId  !== undefined && { slaveId:  patch.slaveId }),
         ...(patch.baudRate !== undefined && { baudRate: patch.baudRate }),
         ...(patch.dataBits !== undefined && { dataBits: patch.dataBits }),
@@ -163,16 +250,13 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
     };
 
     fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf-8');
-    return updated;
+    return this.merge(updated)!;
   }
 
   deleteDevice(id: string): void {
-    const device = this.getById(id);
-    if (!device) throw new NotFoundException(`Device '${id}' not found`);
-    if (device.template) throw new BadRequestException('Cannot delete a template device');
-
-    const filePath = Array.from(this.fileToId.entries()).find(([, v]) => v === id)?.[0];
-    if (!filePath) throw new NotFoundException(`File for device '${id}' not found`);
-    fs.unlinkSync(filePath);
+    if (this.templates.has(id)) throw new BadRequestException('Нельзя удалить шаблон');
+    const filePath = Array.from(this.instanceFileToId.entries()).find(([, v]) => v === id)?.[0];
+    if (!filePath) throw new NotFoundException(`Устройство '${id}' не найдено`);
+    this.projectsService.deleteInstanceFile(filePath);
   }
 }

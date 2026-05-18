@@ -18,6 +18,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import socket from '../socket'
 import { addLog } from '../log'
+import { useDeviceSettings } from '../useDeviceSettings'
 
 const MAX_POINTS = 60
 const COLORS = ['#1677ff', '#52c41a', '#fa8c16', '#eb2f96', '#722ed1', '#13c2c2', '#faad14', '#f5222d']
@@ -35,15 +36,6 @@ function evalCondition(value, condition, threshold) {
   }
 }
 
-function loadCardOrder(deviceId) {
-  try { return JSON.parse(localStorage.getItem(`monitor_order_${deviceId}`) ?? 'null') ?? null }
-  catch { return null }
-}
-
-function loadVisibleParams(deviceId) {
-  try { return JSON.parse(localStorage.getItem(`monitor_visible_${deviceId}`) ?? 'null') ?? null }
-  catch { return null }
-}
 
 function SortableCard({ id, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
@@ -92,8 +84,15 @@ export default function Monitor({ device, modbusConnected }) {
   const [history, setHistory] = useState({})
   const [error, setError] = useState(null)
   const [alertStatus, setAlertStatus] = useState({})
-  const [cardOrder, setCardOrder] = useState(() => loadCardOrder(device.id))
-  const [visibleParams, setVisibleParams] = useState(() => loadVisibleParams(device.id))
+  const [cardOrder, setCardOrder] = useState(null)
+  const [visibleParams, setVisibleParams] = useState(null)
+  const [deviceSettings, saveDeviceSettings] = useDeviceSettings(device.id)
+
+  useEffect(() => {
+    if (deviceSettings === null) return
+    setCardOrder(deviceSettings.monitorOrder ?? null)
+    setVisibleParams(deviceSettings.monitorVisible ?? null)
+  }, [deviceSettings])
 
   const activeAlertsRef = useRef(new Set())
   const deviceRef = useRef(device)
@@ -231,7 +230,7 @@ export default function Monitor({ device, modbusConnected }) {
     const newIndex = orderedParams.findIndex(p => p.id === over.id)
     const newOrder = arrayMove(orderedParams, oldIndex, newIndex).map(p => p.id)
     setCardOrder(newOrder)
-    localStorage.setItem(`monitor_order_${device.id}`, JSON.stringify(newOrder))
+    saveDeviceSettings({ monitorOrder: newOrder })
   }
 
   // Prefer F0 group; fall back to first group with readable numeric params
@@ -254,7 +253,7 @@ export default function Monitor({ device, modbusConnected }) {
 
   function handleVisibleChange(selected) {
     setVisibleParams(selected)
-    localStorage.setItem(`monitor_visible_${device.id}`, JSON.stringify(selected))
+    saveDeviceSettings({ monitorVisible: selected })
   }
 
   const configuredAlerts = device.alerts ?? []

@@ -1,0 +1,8 @@
+{
+  "id": "устройство_1",
+  "name": "устройство 1",
+  "templateId": "nasos",
+  "connection": {
+    "slaveId": 1
+  }
+}

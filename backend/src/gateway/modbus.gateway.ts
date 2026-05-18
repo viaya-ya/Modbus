@@ -44,6 +44,10 @@ export class ModbusGateway
     this.devicesService.events.on('device:removed', () =>
       this.server?.emit('devices:updated', this.devicesService.getAll()),
     );
+    this.devicesService.events.on('devices:reloaded', () => {
+      this.stopMonitor();
+      this.server?.emit('devices:updated', this.devicesService.getAll());
+    });
 
     this.modbusService.events.on('connection:lost', () => {
       this.stopMonitor();

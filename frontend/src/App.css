@@ -6,6 +6,15 @@ body {
   margin: 0;
 }
 
+.project-selector .ant-select-selection-placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.project-selector .ant-select-selector {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+}
+
 
 .hero {
   position: relative;

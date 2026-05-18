@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Collapse, Button, Input, message, Typography, Popconfirm, Space } from 'antd'
 import { DownloadOutlined, SearchOutlined, RollbackOutlined, HolderOutlined } from '@ant-design/icons'
 import {
@@ -17,19 +17,10 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import ParamRow from './ParamRow'
 import api from '../api'
+import { useDeviceSettings } from '../useDeviceSettings'
 
 const DEFAULT_COLS = { id: 90, desc: 220, def: 120, cur: 150, write: 290 }
 const MIN_COLS     = { id: 60, desc: 100, def: 80,  cur: 100, write: 200 }
-
-function loadCols() {
-  try { return { ...DEFAULT_COLS, ...JSON.parse(localStorage.getItem('param_col_widths') ?? '{}') } }
-  catch { return DEFAULT_COLS }
-}
-
-function loadGroupOrder(deviceId) {
-  try { return JSON.parse(localStorage.getItem(`group_order_${deviceId}`) ?? 'null') ?? null }
-  catch { return null }
-}
 
 function SortableCollapseItem({ id, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
@@ -111,9 +102,22 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
       return next
     })
   }, [])
-  const [cols, setCols]                 = useState(loadCols)
-  const [groupOrder, setGroupOrder]     = useState(() => loadGroupOrder(device.id))
+  const [cols, setCols]             = useState(DEFAULT_COLS)
+  const [groupOrder, setGroupOrder] = useState(null)
+  const latestCols = useRef(DEFAULT_COLS)
   const resizing = useRef(null)
+
+  const [deviceSettings, saveDeviceSettings] = useDeviceSettings(device.id)
+
+  useEffect(() => {
+    if (deviceSettings === null) return
+    if (deviceSettings.paramColWidths) {
+      const c = { ...DEFAULT_COLS, ...deviceSettings.paramColWidths }
+      setCols(c)
+      latestCols.current = c
+    }
+    setGroupOrder(deviceSettings.groupOrder ?? null)
+  }, [deviceSettings])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -132,7 +136,7 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
     const newIndex = orderedGroups.findIndex(g => g.id === over.id)
     const newOrder = arrayMove(orderedGroups, oldIndex, newIndex).map(g => g.id)
     setGroupOrder(newOrder)
-    localStorage.setItem(`group_order_${device.id}`, JSON.stringify(newOrder))
+    saveDeviceSettings({ groupOrder: newOrder })
   }
 
   const startResize = useCallback((key) => (e) => {
@@ -145,12 +149,13 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
       const newW = Math.max(MIN_COLS[key], startW + e.clientX - startX)
       setCols(prev => {
         const next = { ...prev, [key]: newW }
-        localStorage.setItem('param_col_widths', JSON.stringify(next))
+        latestCols.current = next
         return next
       })
     }
     function onUp() {
       resizing.current = null
+      saveDeviceSettings({ paramColWidths: latestCols.current })
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
     }

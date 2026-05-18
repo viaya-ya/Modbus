@@ -8,7 +8,9 @@ import ConnectionPanel from './components/ConnectionPanel'
 import BusScanner from './components/BusScanner'
 import LogDrawer from './components/LogDrawer'
 import OlaPage from './components/ola/OlaPage'
+import ProjectSelector from './components/ProjectSelector'
 import socket from './socket'
+import api from './api'
 import { useLog } from './log'
 import 'antd/dist/reset.css'
 import './App.css'
@@ -19,12 +21,18 @@ export default function App() {
   const [mode, setMode] = useState('modbus')
   const [devices, setDevices] = useState([])
   const [selectedIds, setSelectedIds] = useState(new Set())
-  const [siderSide, setSiderSide] = useState(() => localStorage.getItem('sider_side') ?? 'left')
+  const [siderSide, setSiderSide] = useState('left')
+
+  useEffect(() => {
+    api.get('/settings').then(({ data }) => {
+      if (data.siderSide) setSiderSide(data.siderSide)
+    }).catch(() => {})
+  }, [])
 
   function toggleSider() {
     setSiderSide(s => {
       const next = s === 'left' ? 'right' : 'left'
-      localStorage.setItem('sider_side', next)
+      api.patch('/settings', { siderSide: next }).catch(() => {})
       return next
     })
   }
@@ -80,6 +88,7 @@ export default function App() {
         />
         {mode === 'modbus' && (
           <>
+            <ProjectSelector onProjectChange={() => setSelectedIds(new Set())} />
             <ConnectionPanel connected={connected} reconnecting={reconnecting} reconnectAttempt={reconnectAttempt} />
             <BusScanner connected={connected} />
           </>
