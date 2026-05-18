@@ -1,8 +1,8 @@
 {
-  "activeProject": "проект_2",
+  "activeProject": "Проект_2",
   "siderSide": "left",
   "deviceSettings": {
-    "устройство_1": {
+    "nasos": {
       "groupOrder": [
         "F2",
         "F3",
@@ -14,8 +14,8 @@
         "F1"
       ],
       "monitorVisible": [
-        "F0.01",
-        "F0.02"
+        "F0.02",
+        "F0.01"
       ],
       "monitorOrder": [
         "F0.02",
@@ -44,12 +44,44 @@
         "F0.27"
       ],
       "paramColWidths": {
-        "id": 136,
-        "desc": 302,
+        "id": 197,
+        "desc": 528,
         "def": 120,
         "cur": 150,
         "write": 290
       }
+    },
+    "elhart-emd-pump": {
+      "monitorVisible": [
+        "F0.04",
+        "F0.03",
+        "F0.02"
+      ],
+      "monitorOrder": [
+        "F0.01",
+        "F0.03",
+        "F0.02",
+        "F0.04",
+        "F0.05",
+        "F0.06",
+        "F0.07",
+        "F0.08",
+        "F0.09",
+        "F0.10",
+        "F0.11"
+      ],
+      "groupOrder": [
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "F6",
+        "F7",
+        "F8",
+        "vfd-control",
+        "F0"
+      ]
     }
   }
 }

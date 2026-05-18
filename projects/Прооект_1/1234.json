@@ -1,0 +1,8 @@
+{
+  "id": "1234",
+  "name": "1234",
+  "templateId": "elhart-emd-pump",
+  "connection": {
+    "slaveId": 33
+  }
+}

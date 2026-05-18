@@ -107,7 +107,7 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
   const latestCols = useRef(DEFAULT_COLS)
   const resizing = useRef(null)
 
-  const [deviceSettings, saveDeviceSettings] = useDeviceSettings(device.id)
+  const [deviceSettings, saveDeviceSettings] = useDeviceSettings(device.templateId ?? device.id)
 
   useEffect(() => {
     if (deviceSettings === null) return

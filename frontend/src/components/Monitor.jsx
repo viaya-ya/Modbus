@@ -86,7 +86,7 @@ export default function Monitor({ device, modbusConnected }) {
   const [alertStatus, setAlertStatus] = useState({})
   const [cardOrder, setCardOrder] = useState(null)
   const [visibleParams, setVisibleParams] = useState(null)
-  const [deviceSettings, saveDeviceSettings] = useDeviceSettings(device.id)
+  const [deviceSettings, saveDeviceSettings] = useDeviceSettings(device.templateId ?? device.id)
 
   useEffect(() => {
     if (deviceSettings === null) return
