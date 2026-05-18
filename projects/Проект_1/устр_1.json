@@ -1,8 +1,8 @@
 {
   "id": "устр_1",
   "name": "устр 1",
-  "templateId": "nasos",
+  "templateId": "Elhart-Emd-Pump-Full",
   "connection": {
-    "slaveId": 2
+    "slaveId": 1
   }
 }

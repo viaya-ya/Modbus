@@ -1,8 +1,0 @@
-{
-  "id": "устр_343",
-  "name": "устр 343",
-  "templateId": "elhart-emd-pump",
-  "connection": {
-    "slaveId": 22
-  }
-}

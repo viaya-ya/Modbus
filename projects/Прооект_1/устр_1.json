@@ -1,8 +1,0 @@
-{
-  "id": "устр_1",
-  "name": "устр 1",
-  "templateId": "nasos",
-  "connection": {
-    "slaveId": 1
-  }
-}
