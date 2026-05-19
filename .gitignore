@@ -5,6 +5,7 @@ frontend/node_modules/
 
 # Build output
 backend/dist/
+backend/frontend-dist
 frontend/dist/
 frontend/.vite/
 
@@ -22,3 +23,6 @@ npm-debug.log*
 # Env
 .env
 .env.local
+
+settings.json
+projects
