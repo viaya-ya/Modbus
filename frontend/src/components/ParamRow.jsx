@@ -13,10 +13,17 @@ function intToBitState(bits, raw) {
   return state
 }
 
+function normalizeOptions(options) {
+  if (!options) return []
+  if (Array.isArray(options)) return options
+  return Object.entries(options).map(([k, v]) => ({ value: Number(k), label: v }))
+}
+
 function formatValue(type, val, unit, options) {
   if (val === null || val === undefined) return '—'
   if (type === 'enum') {
-    const opt = options?.find(o => o.value === Math.round(val))
+    const opts = normalizeOptions(options)
+    const opt = opts.find(o => o.value === Math.round(val))
     return opt ? opt.label : String(val)
   }
   if (type === 'float') return `${Number(val).toFixed(2)}${unit ? ' ' + unit : ''}`
@@ -180,7 +187,7 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
                   placeholder="Выбрать"
                   popupMatchSelectWidth={false}
                   value={editValue ?? undefined}
-                  options={param.options?.map(o => ({ value: o.value, label: o.label }))}
+                  options={normalizeOptions(param.options)}
                   onChange={val => { setEditValue(val); onPendingWriteChange?.(param.id, val) }}
                 />
               ) : (
