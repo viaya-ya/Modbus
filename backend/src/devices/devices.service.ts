@@ -232,12 +232,23 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException(`Устройство '${id}' не найдено`);
     }
 
-    const projectId = this.projectsService.getActiveProjectId()!;
     const filePath = Array.from(this.instanceFileToId.entries()).find(([, v]) => v === id)?.[0];
     if (!filePath) throw new NotFoundException(`Файл устройства '${id}' не найден`);
 
+    // Generate new id/filename from new name if name is changing
+    let newId = id;
+    if (patch.name !== undefined) {
+      const base = patch.name.trim().replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') || id;
+      newId = base;
+      let counter = 2;
+      while (newId !== id && this.instances.has(newId)) {
+        newId = `${base}_${counter++}`;
+      }
+    }
+
     const updated: DeviceInstance = {
       ...instance,
+      id: newId,
       ...(patch.name !== undefined && { name: patch.name }),
       connection: {
         ...instance.connection,
@@ -249,7 +260,21 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
       },
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf-8');
+    if (newId !== id) {
+      const newFilePath = path.join(path.dirname(filePath), `${newId}.json`);
+      if (fs.existsSync(newFilePath)) throw new BadRequestException(`Файл '${newId}.json' уже существует`);
+      // Update maps before file ops so chokidar events for old/new paths are handled correctly
+      this.instances.delete(id);
+      this.instances.set(newId, updated);
+      this.instanceFileToId.delete(filePath);
+      this.instanceFileToId.set(newFilePath, newId);
+      fs.renameSync(filePath, newFilePath);
+      fs.writeFileSync(newFilePath, JSON.stringify(updated, null, 2), 'utf-8');
+      this.events.emit('device:id:changed', { oldId: id, newId });
+    } else {
+      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf-8');
+    }
+
     return this.merge(updated)!;
   }
 

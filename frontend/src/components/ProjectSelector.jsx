@@ -3,7 +3,7 @@ import { Dropdown, Button, Modal, Form, Input, Space, Popconfirm, message } from
 import { PlusOutlined, FolderOpenOutlined, DownOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import api from '../api'
 
-export default function ProjectSelector({ onProjectChange }) {
+export default function ProjectSelector({ onProjectChange, onProjectInit }) {
   const [projects, setProjects] = useState([])
   const [activeId, setActiveId] = useState(null)
   const [createOpen, setCreateOpen] = useState(false)
@@ -22,7 +22,9 @@ export default function ProjectSelector({ onProjectChange }) {
         api.get('/projects/active'),
       ])
       setProjects(list)
-      setActiveId(active.id)
+      const validId = active.id && list.some(p => p.id === active.id) ? active.id : null
+      setActiveId(validId)
+      onProjectInit?.(validId)
     } catch {}
   }
 
@@ -30,7 +32,7 @@ export default function ProjectSelector({ onProjectChange }) {
     try {
       await api.post('/projects/active', { id })
       setActiveId(id)
-      onProjectChange?.()
+      onProjectChange?.(id)
     } catch {
       message.error('Не удалось переключить проект')
     }
@@ -43,7 +45,7 @@ export default function ProjectSelector({ onProjectChange }) {
       await api.post('/projects/active', { id: project.id })
       setProjects(prev => [...prev, project])
       setActiveId(project.id)
-      onProjectChange?.()
+      onProjectChange?.(project.id)
       setCreateOpen(false)
       createForm.resetFields()
       message.success(`Проект «${name}» создан`)
@@ -62,7 +64,7 @@ export default function ProjectSelector({ onProjectChange }) {
       setProjects(prev => prev.map(p => p.id === oldId ? updated : p))
       if (activeId === oldId) {
         setActiveId(updated.id)
-        if (updated.id !== oldId) onProjectChange?.()
+        if (updated.id !== oldId) onProjectChange?.(updated.id)
       }
       setEditProject(null)
       editForm.resetFields()
@@ -80,7 +82,7 @@ export default function ProjectSelector({ onProjectChange }) {
       setProjects(prev => prev.filter(p => p.id !== id))
       if (activeId === id) {
         setActiveId(null)
-        onProjectChange?.()
+        onProjectChange?.(null)
       }
       message.success('Проект удалён')
     } catch (e) {

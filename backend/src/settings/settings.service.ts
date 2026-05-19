@@ -7,6 +7,7 @@ export interface DeviceUISettings {
   monitorVisible?: string[];
   groupOrder?: string[];
   paramColWidths?: Record<string, number>;
+  pendingWrites?: Record<string, any>;
 }
 
 export interface AppSettings {

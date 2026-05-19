@@ -22,6 +22,7 @@ export default function App() {
   const [devices, setDevices] = useState([])
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [siderSide, setSiderSide] = useState('left')
+  const [activeProjectId, setActiveProjectId] = useState(null)
 
   useEffect(() => {
     api.get('/settings').then(({ data }) => {
@@ -50,6 +51,15 @@ export default function App() {
       const existingIds = new Set(list.map(d => d.id))
       setSelectedIds(prev => new Set([...prev].filter(id => existingIds.has(id))))
     })
+    socket.on('device:id:changed', ({ oldId, newId }) => {
+      setSelectedIds(prev => {
+        if (!prev.has(oldId)) return prev
+        const next = new Set(prev)
+        next.delete(oldId)
+        next.add(newId)
+        return next
+      })
+    })
     socket.on('modbus:status', status => {
       setConnected(status.connected)
       setReconnecting(status.reconnecting ?? false)
@@ -59,6 +69,7 @@ export default function App() {
     return () => {
       socket.off('devices:list')
       socket.off('devices:updated')
+      socket.off('device:id:changed')
       socket.off('modbus:status')
     }
   }, [])
@@ -88,7 +99,10 @@ export default function App() {
         />
         {mode === 'modbus' && (
           <>
-            <ProjectSelector onProjectChange={() => setSelectedIds(new Set())} />
+            <ProjectSelector
+              onProjectInit={id => setActiveProjectId(id)}
+              onProjectChange={id => { setSelectedIds(new Set()); setActiveProjectId(id ?? null) }}
+            />
             <ConnectionPanel connected={connected} reconnecting={reconnecting} reconnectAttempt={reconnectAttempt} />
             <BusScanner connected={connected} />
           </>
@@ -135,6 +149,7 @@ export default function App() {
               selectedIds={selectedIds}
               onSelectionChange={setSelectedIds}
               connected={connected}
+              hasProject={!!activeProjectId}
             />
           </Sider>
 

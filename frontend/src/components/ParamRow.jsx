@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button, InputNumber, Select, Typography, Spin, message, Space, Tag, Tooltip } from 'antd'
 import api from '../api'
 import { addLog } from '../log'
@@ -25,10 +25,20 @@ function formatValue(type, val, unit, options) {
 
 const DEFAULT_COLS = { id: 90, desc: 220, def: 120, cur: 150, write: 290 }
 
-export default function ParamRow({ device, param, modbusConnected, injectedValue, cols, onWrite, onClearGroupValue }) {
-  const [value, setValue]       = useState(null)
-  const [bitState, setBitState] = useState({})
+export default function ParamRow({ device, param, modbusConnected, injectedValue, cols, onWrite, onClearGroupValue, pendingWriteValue, onPendingWriteChange, fillStamp }) {
+  const [value, setValue]         = useState(null)
+  const [bitState, setBitState]   = useState({})
   const [editValue, setEditValue] = useState(null)
+  const appliedStamp = useRef(0)
+
+  useEffect(() => {
+    if (!fillStamp || fillStamp === appliedStamp.current || pendingWriteValue == null) return
+    appliedStamp.current = fillStamp
+    setEditValue(pendingWriteValue)
+    if (param.type === 'bitmask' && param.bits) {
+      setBitState(intToBitState(param.bits, pendingWriteValue))
+    }
+  }, [fillStamp])
   const [reading, setReading]   = useState(false)
   const [writing, setWriting]   = useState(false)
 
@@ -169,8 +179,9 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
                   style={{ width: inputW }}
                   placeholder="Выбрать"
                   popupMatchSelectWidth={false}
+                  value={editValue ?? undefined}
                   options={param.options?.map(o => ({ value: o.value, label: o.label }))}
-                  onChange={val => setEditValue(val)}
+                  onChange={val => { setEditValue(val); onPendingWriteChange?.(param.id, val) }}
                 />
               ) : (
                 <InputNumber
@@ -180,7 +191,8 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
                   max={param.max}
                   step={param.scale ?? 1}
                   placeholder={String(param.default ?? '')}
-                  onChange={val => setEditValue(val)}
+                  value={editValue ?? undefined}
+                  onChange={val => { setEditValue(val); onPendingWriteChange?.(param.id, val) }}
                 />
               )}
               <Button
@@ -224,7 +236,9 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
                       onChange={val => {
                         const next = { ...bitState, [b.bit]: val }
                         setBitState(next)
-                        setEditValue(bitsToInt(param.bits, next))
+                        const intVal = bitsToInt(param.bits, next)
+                        setEditValue(intVal)
+                        onPendingWriteChange?.(param.id, intVal)
                       }}
                     />
                   ))}

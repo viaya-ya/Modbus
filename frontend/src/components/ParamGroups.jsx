@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Collapse, Button, Input, message, Typography, Popconfirm, Space } from 'antd'
-import { DownloadOutlined, SearchOutlined, RollbackOutlined, HolderOutlined } from '@ant-design/icons'
+import { DownloadOutlined, SearchOutlined, RollbackOutlined, HolderOutlined, HistoryOutlined } from '@ant-design/icons'
 import {
   DndContext,
   closestCenter,
@@ -104,7 +104,11 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
   }, [])
   const [cols, setCols]             = useState(DEFAULT_COLS)
   const [groupOrder, setGroupOrder] = useState(null)
+  const [pendingWrites, setPendingWrites] = useState({})
+  const [fillStamp, setFillStamp] = useState(0)
   const latestCols = useRef(DEFAULT_COLS)
+  const latestPendingWrites = useRef({})
+  const pendingSaveTimer = useRef(null)
   const resizing = useRef(null)
 
   const [deviceSettings, saveDeviceSettings] = useDeviceSettings(device.templateId ?? device.id)
@@ -117,7 +121,22 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
       latestCols.current = c
     }
     setGroupOrder(deviceSettings.groupOrder ?? null)
+    const pw = deviceSettings.pendingWrites ?? {}
+    setPendingWrites(pw)
+    latestPendingWrites.current = pw
   }, [deviceSettings])
+
+  const handlePendingWriteChange = useCallback((paramId, val) => {
+    setPendingWrites(prev => {
+      const next = { ...prev, [paramId]: val }
+      latestPendingWrites.current = next
+      return next
+    })
+    if (pendingSaveTimer.current) clearTimeout(pendingSaveTimer.current)
+    pendingSaveTimer.current = setTimeout(() => {
+      saveDeviceSettings({ pendingWrites: latestPendingWrites.current })
+    }, 500)
+  }, [saveDeviceSettings])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -245,6 +264,9 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
               cols={cols}
               onWrite={onWrite}
               onClearGroupValue={clearGroupValue}
+              pendingWriteValue={pendingWrites[param.id]}
+              onPendingWriteChange={handlePendingWriteChange}
+              fillStamp={fillStamp}
             />
           ))}
         </div>
@@ -325,6 +347,14 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
           allowClear
           style={{ width: 320 }}
         />
+        <Button
+          icon={<HistoryOutlined />}
+          disabled={Object.keys(pendingWrites).length === 0}
+          onClick={() => setFillStamp(s => s + 1)}
+          title="Заполнить поля записи сохранёнными черновиками"
+        >
+          Черновик
+        </Button>
         {!onWrite && (
           <Button
             icon={<DownloadOutlined />}

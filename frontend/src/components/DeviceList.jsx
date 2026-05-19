@@ -11,7 +11,7 @@ const PARITY_OPTIONS = [
 
 const BAUD_OPTIONS = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200].map(v => ({ value: v, label: String(v) }))
 
-export default function DeviceList({ devices, selectedIds, onSelectionChange, connected }) {
+export default function DeviceList({ devices, selectedIds, onSelectionChange, connected, hasProject }) {
   const [addOpen, setAddOpen]       = useState(false)
   const [editDevice, setEditDevice] = useState(null)
   const [templates, setTemplates]   = useState([])
@@ -93,12 +93,29 @@ export default function DeviceList({ devices, selectedIds, onSelectionChange, co
   return (
     <>
       <div style={{ padding: '8px 16px 4px' }}>
-        <Button type="dashed" icon={<PlusOutlined />} size="small" block onClick={openAdd}>
-          Добавить устройство
-        </Button>
+        <Tooltip
+          title={!hasProject ? 'Сначала выберите или создайте проект в шапке приложения' : ''}
+        >
+          <Button
+            type="dashed"
+            icon={<PlusOutlined />}
+            size="small"
+            block
+            onClick={openAdd}
+            disabled={!hasProject}
+          >
+            Добавить устройство
+          </Button>
+        </Tooltip>
       </div>
 
-      {visibleDevices.length === 0 ? (
+      {!hasProject ? (
+        <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            Выберите проект в шапке приложения или создайте новый — затем можно будет добавлять устройства
+          </Typography.Text>
+        </div>
+      ) : visibleDevices.length === 0 ? (
         <Typography.Text type="secondary" style={{ display: 'block', padding: '16px' }}>
           Нет устройств
         </Typography.Text>
