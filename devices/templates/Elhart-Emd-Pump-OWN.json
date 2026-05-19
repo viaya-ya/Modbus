@@ -1,7 +1,7 @@
 {
   "id": "Elhart-Emd-Pump-OWN",
   "name": "Elhart-Emd-Pump-OWN",
-  "description": "Преобразователь частоты для насосов",
+  "description": "Преобразователь частоты для насосов (OWN)",
   "template": true,
   "connection": {
     "slaveId": 2,
@@ -150,7 +150,7 @@
               "bit": 0,
               "name": "direction",
               "description": "Направление вращения",
-              "values": {
+              "options": {
                 "0": "Прямое",
                 "1": "Обратное"
               }
@@ -159,7 +159,7 @@
               "bit": 1,
               "name": "run",
               "description": "Состояние",
-              "values": {
+              "options": {
                 "0": "Остановлен",
                 "1": "Работает"
               }
@@ -179,7 +179,7 @@
           "register": 0,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "Заданная частота",
             "1": "Выходная частота",
             "2": "Выходной ток",
@@ -329,14 +329,14 @@
           "access": "read",
           "type": "bitmask",
           "bits": [
-            { "bit": 0, "name": "FWD", "values": { "0": "выкл", "1": "вкл" } },
-            { "bit": 1, "name": "REV", "values": { "0": "выкл", "1": "вкл" } },
-            { "bit": 2, "name": "S1",  "values": { "0": "выкл", "1": "вкл" } },
-            { "bit": 3, "name": "S2",  "values": { "0": "выкл", "1": "вкл" } },
-            { "bit": 4, "name": "S3",  "values": { "0": "выкл", "1": "вкл" } },
-            { "bit": 5, "name": "S4",  "values": { "0": "выкл", "1": "вкл" } },
-            { "bit": 6, "name": "S5",  "values": { "0": "выкл", "1": "вкл" } },
-            { "bit": 7, "name": "S6",  "values": { "0": "выкл", "1": "вкл" } }
+            { "bit": 0, "name": "FWD", "options": { "0": "выкл", "1": "вкл" } },
+            { "bit": 1, "name": "REV", "options": { "0": "выкл", "1": "вкл" } },
+            { "bit": 2, "name": "S1",  "options": { "0": "выкл", "1": "вкл" } },
+            { "bit": 3, "name": "S2",  "options": { "0": "выкл", "1": "вкл" } },
+            { "bit": 4, "name": "S3",  "options": { "0": "выкл", "1": "вкл" } },
+            { "bit": 5, "name": "S4",  "options": { "0": "выкл", "1": "вкл" } },
+            { "bit": 6, "name": "S5",  "options": { "0": "выкл", "1": "вкл" } },
+            { "bit": 7, "name": "S6",  "options": { "0": "выкл", "1": "вкл" } }
           ]
         },
         {
@@ -346,9 +346,9 @@
           "access": "read",
           "type": "bitmask",
           "bits": [
-            { "bit": 0,  "name": "M01", "values": { "0": "выкл", "1": "вкл" } },
-            { "bit": 1,  "name": "M02", "values": { "0": "выкл", "1": "вкл" } },
-            { "bit": 2,  "name": "YA/YC", "values": { "0": "выкл", "1": "вкл" } }
+            { "bit": 0,  "name": "M01", "options": { "0": "выкл", "1": "вкл" } },
+            { "bit": 1,  "name": "M02", "options": { "0": "выкл", "1": "вкл" } },
+            { "bit": 2,  "name": "YA/YC", "options": { "0": "выкл", "1": "вкл" } }
           ]
         },
         {
@@ -410,7 +410,7 @@
           "register": 101,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "Предустановленная частота",
             "1": "Аналоговый сигнал на входе FIV/внешний потенциометр 5...10 кОм",
             "2": "Аналоговый сигнал на входе FIC",
@@ -429,7 +429,7 @@
           "register": 102,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "Пульт управления",
             "1": "Многофункциональные дискретные входы",
             "2": "Интерфейс RS-485"
@@ -442,7 +442,7 @@
           "register": 103,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "Кнопка заблокирована",
             "1": "Кнопка активна"
           },
@@ -454,7 +454,7 @@
           "register": 104,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "Вращение назад запрещено",
             "1": "Вращение назад разрешено"
           },
@@ -525,7 +525,7 @@
           "register": 200,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "Обычный пуск",
             "1": "Пуск с поиском частоты (подхват вращающегося электродвигателя)"
           },
@@ -537,7 +537,7 @@
           "register": 201,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "Остановка с замедлением",
             "1": "Остановка на выбеге"
           },
@@ -756,7 +756,7 @@
           "register": 311,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "Прямое вращение",
             "1": "Обратное вращение"
           },
@@ -781,7 +781,7 @@
           "register": 313,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "Прямое вращение",
             "1": "Обратное вращение"
           },
@@ -793,7 +793,7 @@
           "register": 315,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "Не используется",
             "1": "Вращение с частотой JOG",
             "2": "Вращение с частотой JOG в прямом направлении",
@@ -834,7 +834,7 @@
           "register": 324,
           "access": "read-write",
           "type": "enum",
-          "values_ref": "F3.23",
+          "options_ref": "F3.23",
           "default": 2
         },
         {
@@ -843,7 +843,7 @@
           "register": 325,
           "access": "read-write",
           "type": "enum",
-          "values_ref": "F3.23",
+          "options_ref": "F3.23",
           "default": 3
         },
         {
@@ -852,7 +852,7 @@
           "register": 326,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "Выходная частота",
             "1": "Выходной ток ПЧ",
             "2": "Напряжение звена постоянного тока",
@@ -866,7 +866,7 @@
           "register": 327,
           "access": "read-write",
           "type": "enum",
-          "values_ref": "F3.26",
+          "options_ref": "F3.26",
           "default": 0
         }
       ]
@@ -905,7 +905,7 @@
           "register": 411,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "Выключена",
             "1": "Включена"
           },
@@ -939,7 +939,7 @@
           "register": 422,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "Активна на заданной частоте: при превышении тока ПЧ продолжает работу",
             "1": "Активна на заданной частоте: при превышении тока ПЧ отключается",
             "2": "Активна всегда: при превышении тока ПЧ продолжает работу",
@@ -985,7 +985,7 @@
           "register": 700,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "4800 бит/сек",
             "1": "9600 бит/сек",
             "2": "19200 бит/сек",
@@ -999,7 +999,7 @@
           "register": 701,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "8,N,1, ASCII",
             "1": "8,E,1, ASCII",
             "2": "8,O,1, ASCII",
@@ -1025,7 +1025,7 @@
           "register": 703,
           "access": "read-write",
           "type": "enum",
-          "values": {
+          "options": {
             "0": "Не отслеживается",
             "1": "Сигнализация без остановки ПЧ",
             "2": "Сигнализация с остановкой ПЧ"
