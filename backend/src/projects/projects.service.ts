@@ -62,12 +62,24 @@ export class ProjectsService {
   renameProject(id: string, name: string): ProjectMeta {
     const dir = path.join(this.projectsPath, id);
     if (!fs.existsSync(dir)) throw new NotFoundException(`Проект '${id}' не найден`);
-    const metaPath = path.join(dir, 'project.json');
+
+    const newId = name.trim().replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') || id;
+    const newDir = path.join(this.projectsPath, newId);
+
     let existing: any = {};
-    try { existing = JSON.parse(fs.readFileSync(metaPath, 'utf-8')); } catch {}
-    const updated = { ...existing, name };
-    fs.writeFileSync(metaPath, JSON.stringify(updated, null, 2));
-    return { id, name, created: existing.created ?? '' };
+    try { existing = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf-8')); } catch {}
+
+    if (newId !== id) {
+      if (fs.existsSync(newDir)) throw new BadRequestException(`Папка '${newId}' уже существует`);
+      fs.renameSync(dir, newDir);
+      if (this.getActiveProjectId() === id) {
+        this.settingsService.update({ activeProject: newId });
+        this.events.emit('project:changed', newId);
+      }
+    }
+
+    fs.writeFileSync(path.join(newDir, 'project.json'), JSON.stringify({ ...existing, name }, null, 2));
+    return { id: newId, name, created: existing.created ?? '' };
   }
 
   setActiveProject(id: string | null): void {

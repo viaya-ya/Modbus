@@ -57,8 +57,13 @@ export default function ProjectSelector({ onProjectChange }) {
   async function handleRename({ name }) {
     setSaving(true)
     try {
-      const { data: updated } = await api.patch(`/projects/${editProject.id}`, { name })
-      setProjects(prev => prev.map(p => p.id === updated.id ? updated : p))
+      const oldId = editProject.id
+      const { data: updated } = await api.patch(`/projects/${oldId}`, { name })
+      setProjects(prev => prev.map(p => p.id === oldId ? updated : p))
+      if (activeId === oldId) {
+        setActiveId(updated.id)
+        if (updated.id !== oldId) onProjectChange?.()
+      }
       setEditProject(null)
       editForm.resetFields()
       message.success('Проект переименован')

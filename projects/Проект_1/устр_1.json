@@ -1,8 +1,0 @@
-{
-  "id": "устр_1",
-  "name": "устр 1",
-  "templateId": "Elhart-Emd-Pump-Full",
-  "connection": {
-    "slaveId": 1
-  }
-}
