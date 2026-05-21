@@ -8,6 +8,8 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -32,9 +34,7 @@ jobs:
         run: npm run build
 
       - name: Build Windows installer
-        run: npx electron-builder --win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish never
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v1
