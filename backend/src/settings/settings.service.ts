@@ -24,7 +24,8 @@ export class SettingsService {
   private settings: AppSettings;
 
   constructor() {
-    this.filePath = path.join(process.cwd(), '..', 'settings.json');
+    const userDataPath = process.env.USER_DATA_PATH ?? path.join(process.cwd(), '..');
+    this.filePath = path.join(userDataPath, 'settings.json');
     this.settings = this.load();
   }
 

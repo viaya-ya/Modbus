@@ -11,7 +11,8 @@ export class ProjectsService {
   readonly projectsPath: string;
 
   constructor(private readonly settingsService: SettingsService) {
-    this.projectsPath = path.join(process.cwd(), '..', 'projects');
+    const userDataPath = process.env.USER_DATA_PATH ?? path.join(process.cwd(), '..');
+    this.projectsPath = path.join(userDataPath, 'projects');
     fs.mkdirSync(this.projectsPath, { recursive: true });
   }
 

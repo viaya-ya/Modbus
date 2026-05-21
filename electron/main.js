@@ -22,6 +22,7 @@ function startBackend() {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
       NODE_ENV: 'production',
+      USER_DATA_PATH: app.getPath('userData'),
     },
     stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   })
