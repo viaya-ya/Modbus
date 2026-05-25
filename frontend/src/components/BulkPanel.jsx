@@ -3,6 +3,7 @@ import { Button, Space, Typography, Tag, Popconfirm, Progress, message } from 'a
 import { DownloadOutlined, RollbackOutlined, CloseOutlined } from '@ant-design/icons'
 import api from '../api'
 import ParamGroups from './ParamGroups'
+import { isParamWritable } from '../access'
 
 export default function BulkPanel({ devices, modbusConnected, onDeselect }) {
   const [progress, setProgress] = useState(null)
@@ -23,7 +24,7 @@ export default function BulkPanel({ devices, modbusConnected, onDeselect }) {
     const ops = devices.flatMap(d =>
       d.groups.flatMap(g =>
         g.params
-          .filter(p => p.access === 'read-write' && p.default != null)
+          .filter(p => isParamWritable(d, p) && p.default != null)
           .map(p => ({ device: d, param: p }))
       )
     )
@@ -60,7 +61,7 @@ export default function BulkPanel({ devices, modbusConnected, onDeselect }) {
   }
 
   async function handleBulkResetGroup(group) {
-    const toWrite = group.params.filter(p => p.access === 'read-write' && p.default != null)
+    const toWrite = group.params.filter(p => isParamWritable(devices[0], p) && p.default != null)
     if (toWrite.length === 0) { message.info('Нет параметров с заводскими значениями'); return }
     let ok = 0
     for (const device of devices) {

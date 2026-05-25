@@ -18,6 +18,7 @@ import { CSS } from '@dnd-kit/utilities'
 import ParamRow from './ParamRow'
 import api from '../api'
 import { useDeviceSettings } from '../useDeviceSettings'
+import { isParamWritable } from '../access'
 
 const DEFAULT_COLS = { id: 90, desc: 220, def: 120, cur: 150, write: 290 }
 const MIN_COLS     = { id: 60, desc: 100, def: 80,  cur: 100, write: 200 }
@@ -90,7 +91,7 @@ function ParamTableHeader({ cols, onResizeStart }) {
   )
 }
 
-export default function ParamGroups({ device, modbusConnected, onWrite, onReadGroup, onResetGroup }) {
+export default function ParamGroups({ device, modbusConnected, deviceRunning, onWrite, onReadGroup, onResetGroup }) {
   const [readingGroup, setReadingGroup] = useState(null)
   const [groupValues, setGroupValues]   = useState({})
   const [search, setSearch]             = useState('')
@@ -260,6 +261,7 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
               device={device}
               param={param}
               modbusConnected={modbusConnected}
+              deviceRunning={deviceRunning}
               injectedValue={groupValues[param.id]}
               cols={cols}
               onWrite={onWrite}
@@ -277,7 +279,7 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
   async function resetGroup(group, e) {
     e.stopPropagation()
     const toWrite = group.params.filter(
-      p => p.access === 'read-write' && p.default !== undefined && p.default !== null
+      p => isParamWritable(device, p) && p.default !== undefined && p.default !== null
     )
     if (toWrite.length === 0) {
       message.info('Нет параметров с заводскими значениями')
@@ -315,7 +317,7 @@ export default function ParamGroups({ device, modbusConnected, onWrite, onReadGr
 
   async function resetAll() {
     const allParams = device.groups.flatMap(g => g.params).filter(
-      p => p.access === 'read-write' && p.default !== undefined && p.default !== null
+      p => isParamWritable(device, p) && p.default !== undefined && p.default !== null
     )
     if (allParams.length === 0) {
       message.info('Нет параметров с заводскими значениями')

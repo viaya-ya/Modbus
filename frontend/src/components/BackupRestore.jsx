@@ -7,14 +7,15 @@ import {
 } from '@ant-design/icons'
 import api from '../api'
 import { addLog } from '../log'
+import { isParamWritable } from '../access'
 
-// Params to backup: all read-write, excluding the 'control' group (CMD/FSET are runtime, not config)
+// Params to backup: all writable, excluding the 'control' group (CMD/FSET are runtime, not config)
 function getRwParams(device) {
   return device.groups
     .filter(g => g.id !== 'control')
     .flatMap(g =>
       g.params
-        .filter(p => p.access === 'read-write')
+        .filter(p => isParamWritable(device, p))
         .map(p => ({ ...p, groupId: g.id, groupName: g.name })),
     )
 }

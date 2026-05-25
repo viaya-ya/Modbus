@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Button, InputNumber, Select, Typography, Spin, message, Space, Tag, Tooltip } from 'antd'
 import api from '../api'
 import { addLog } from '../log'
+import { isParamWritable, isStopOnly } from '../access'
 
 function bitsToInt(bits, bitState) {
   return bits.reduce((acc, b) => acc | ((bitState[b.bit] ?? 0) << b.bit), 0)
@@ -11,6 +12,11 @@ function intToBitState(bits, raw) {
   const state = {}
   bits.forEach(b => { state[b.bit] = (Math.round(raw) >> b.bit) & 1 })
   return state
+}
+
+function getAccessTooltip(device, param) {
+  if (device?.access_legend) return device.access_legend[param.access] ?? param.access
+  return null
 }
 
 function normalizeOptions(options) {
@@ -32,7 +38,7 @@ function formatValue(type, val, unit, options) {
 
 const DEFAULT_COLS = { id: 90, desc: 220, def: 120, cur: 150, write: 290 }
 
-export default function ParamRow({ device, param, modbusConnected, injectedValue, cols, onWrite, onClearGroupValue, pendingWriteValue, onPendingWriteChange, fillStamp }) {
+export default function ParamRow({ device, param, modbusConnected, deviceRunning, injectedValue, cols, onWrite, onClearGroupValue, pendingWriteValue, onPendingWriteChange, fillStamp }) {
   const [value, setValue]         = useState(null)
   const [bitState, setBitState]   = useState({})
   const [editValue, setEditValue] = useState(null)
@@ -103,6 +109,10 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
   }
 
   const isBitmask = param.type === 'bitmask' && param.bits
+  const canWrite = isParamWritable(device, param)
+  const stopOnly = isStopOnly(device, param)
+  const blockedByRunning = stopOnly && deviceRunning === true
+  const accessTooltip = getAccessTooltip(device, param)
 
   function renderBitTags(raw) {
     return param.bits.map(b => {
@@ -135,7 +145,12 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
         {/* Параметр / Адрес */}
         <div style={{ width: C.id, flexShrink: 0 }}>
           <Typography.Text code style={{ fontSize: 11, display: 'block' }}>{param.id}</Typography.Text>
-          <Typography.Text style={{ fontSize: 10, color: '#999' }}>рег.{param.register}</Typography.Text>
+          <Tooltip title={accessTooltip} placement="right">
+            <Typography.Text style={{ fontSize: 10, color: '#999', cursor: accessTooltip ? 'help' : undefined }}>
+              рег.{param.register}
+              {accessTooltip && <span style={{ marginLeft: 3, opacity: 0.6 }}>[{param.access}]</span>}
+            </Typography.Text>
+          </Tooltip>
         </div>
 
         {/* Описание */}
@@ -178,7 +193,7 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
           <Button size="small" onClick={handleRead} disabled={!modbusConnected || !!onWrite} loading={reading}>
             Читать
           </Button>
-          {param.access === 'read-write' && !isBitmask && (
+          {canWrite && !isBitmask && (
             <>
               {param.type === 'enum' ? (
                 <Select
@@ -202,15 +217,17 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
                   onChange={val => { setEditValue(val); onPendingWriteChange?.(param.id, val) }}
                 />
               )}
-              <Button
-                size="small"
-                type="primary"
-                onClick={handleWrite}
-                disabled={!modbusConnected || editValue === null || editValue === undefined}
-                loading={writing}
-              >
-                Записать
-              </Button>
+              <Tooltip title={blockedByRunning ? 'Остановите ПЧ перед изменением' : undefined}>
+                <Button
+                  size="small"
+                  type="primary"
+                  onClick={handleWrite}
+                  disabled={!modbusConnected || editValue === null || editValue === undefined || blockedByRunning}
+                  loading={writing}
+                >
+                  Записать
+                </Button>
+              </Tooltip>
             </>
           )}
         </div>
@@ -226,7 +243,7 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
               <div style={{ display: 'flex', flexWrap: 'wrap' }}>
                 {renderBitTags(value)}
               </div>
-              {param.access === 'read-write' && (
+              {canWrite && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                   {param.bits.map(b => (
                     <Select
@@ -249,15 +266,17 @@ export default function ParamRow({ device, param, modbusConnected, injectedValue
                       }}
                     />
                   ))}
-                  <Button
-                    size="small"
-                    type="primary"
-                    onClick={handleWrite}
-                    disabled={!modbusConnected || editValue === null || editValue === undefined}
-                    loading={writing}
-                  >
-                    Записать
-                  </Button>
+                  <Tooltip title={blockedByRunning ? 'Остановите ПЧ перед изменением' : undefined}>
+                    <Button
+                      size="small"
+                      type="primary"
+                      onClick={handleWrite}
+                      disabled={!modbusConnected || editValue === null || editValue === undefined || blockedByRunning}
+                      loading={writing}
+                    >
+                      Записать
+                    </Button>
+                  </Tooltip>
                 </div>
               )}
             </>
