@@ -86,7 +86,7 @@ export class ModbusController {
     if (!device) throw new NotFoundException(`Device '${body.deviceId}' not found`);
     const param = this.devicesService.findParam(body.deviceId, body.paramId);
     if (!param) throw new NotFoundException(`Param '${body.paramId}' not found`);
-    if (param.access !== 'read-write')
+    if (!this.devicesService.isParamWritable(device, param))
       throw new BadRequestException(`Param '${body.paramId}' is read-only`);
     const slaveId = device.connection.slaveId ?? 1;
     const scale = param.scale ?? 1;

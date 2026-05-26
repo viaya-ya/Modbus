@@ -15,10 +15,8 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
   private templateFileToId = new Map<string, string>();
 
   private instances = new Map<string, DeviceInstance>();
-  private instanceFileToId = new Map<string, string>();
 
   private templateWatcher: FSWatcher | null = null;
-  private instanceWatcher: FSWatcher | null = null;
 
   readonly devicesPath: string;
   readonly templatesPath: string;
@@ -33,15 +31,11 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
     this.loadAllTemplates();
     await this.startTemplateWatcher();
     this.loadActiveProjectInstances();
-    await this.startInstanceWatcher();
-    this.projectsService.events.on('project:changed', async () => {
-      await this.reloadProject();
-    });
+    this.projectsService.events.on('project:changed', () => this.reloadProject());
   }
 
   onModuleDestroy() {
     this.templateWatcher?.close();
-    this.instanceWatcher?.close();
   }
 
   // ─── Templates ─────────────────────────────────────────────────────────────
@@ -96,60 +90,15 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
 
   private loadActiveProjectInstances() {
     this.instances.clear();
-    this.instanceFileToId.clear();
     const projectId = this.projectsService.getActiveProjectId();
     if (!projectId) return;
-    for (const { instance, filePath } of this.projectsService.loadInstances(projectId)) {
-      this.instances.set(instance.id, instance);
-      this.instanceFileToId.set(filePath, instance.id);
+    for (const inst of this.projectsService.loadInstances(projectId)) {
+      this.instances.set(inst.id, inst);
     }
   }
 
-  private async startInstanceWatcher() {
-    this.instanceWatcher?.close();
-    this.instanceWatcher = null;
-    const projectPath = this.projectsService.getActiveProjectPath();
-    if (!projectPath) return;
-    const chokidar = await import('chokidar');
-    this.instanceWatcher = chokidar.watch(projectPath, {
-      ignoreInitial: true,
-      awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 },
-    });
-    this.instanceWatcher.on('add', (fp: string) => {
-      if (!fp.endsWith('.json') || fp.endsWith('project.json')) return;
-      this.loadInstanceFile(fp, 'added');
-    });
-    this.instanceWatcher.on('change', (fp: string) => {
-      if (!fp.endsWith('.json') || fp.endsWith('project.json')) return;
-      this.loadInstanceFile(fp, 'changed');
-    });
-    this.instanceWatcher.on('unlink', (fp: string) => {
-      const id = this.instanceFileToId.get(fp);
-      if (id) {
-        this.instances.delete(id);
-        this.instanceFileToId.delete(fp);
-        this.events.emit('device:removed', id);
-      }
-    });
-  }
-
-  private loadInstanceFile(filePath: string, event: 'added' | 'changed') {
-    try {
-      const instance = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as DeviceInstance;
-      const prevId = this.instanceFileToId.get(filePath);
-      if (prevId && prevId !== instance.id) this.instances.delete(prevId);
-      this.instanceFileToId.set(filePath, instance.id);
-      this.instances.set(instance.id, instance);
-      const merged = this.merge(instance);
-      if (merged) this.events.emit(`device:${event}`, merged);
-    } catch {}
-  }
-
-  private async reloadProject() {
-    this.instanceWatcher?.close();
-    this.instanceWatcher = null;
+  private reloadProject() {
     this.loadActiveProjectInstances();
-    await this.startInstanceWatcher();
     this.events.emit('devices:reloaded');
   }
 
@@ -196,6 +145,15 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
     return null;
   }
 
+  isParamWritable(device: DeviceConfig, param: DeviceParam): boolean {
+    if (device.access_legend) {
+      const description = device.access_legend[param.access];
+      if (description === undefined) return false;
+      return !description.includes('только чтение');
+    }
+    return param.access === 'read-write';
+  }
+
   getTemplates(): DeviceConfig[] {
     return Array.from(this.templates.values());
   }
@@ -214,15 +172,12 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
       id = `${baseName}_${counter++}`;
     }
 
-    const instance: DeviceInstance = {
-      id,
-      name,
-      templateId,
-      connection: { slaveId },
-    };
-
+    const instance: DeviceInstance = { id, name, templateId, connection: { slaveId } };
+    this.instances.set(id, instance);
     this.projectsService.writeInstance(projectId, instance);
-    return this.merge(instance)!;
+    const merged = this.merge(instance)!;
+    this.events.emit('device:added', merged);
+    return merged;
   }
 
   updateDevice(id: string, patch: { name?: string; slaveId?: number; baudRate?: number; dataBits?: number; stopBits?: number; parity?: string }): DeviceConfig {
@@ -232,10 +187,9 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException(`Устройство '${id}' не найдено`);
     }
 
-    const filePath = Array.from(this.instanceFileToId.entries()).find(([, v]) => v === id)?.[0];
-    if (!filePath) throw new NotFoundException(`Файл устройства '${id}' не найден`);
+    const projectId = this.projectsService.getActiveProjectId();
+    if (!projectId) throw new BadRequestException('Нет активного проекта');
 
-    // Generate new id/filename from new name if name is changing
     let newId = id;
     if (patch.name !== undefined) {
       const base = patch.name.trim().replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') || id;
@@ -261,27 +215,22 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
     };
 
     if (newId !== id) {
-      const newFilePath = path.join(path.dirname(filePath), `${newId}.json`);
-      if (fs.existsSync(newFilePath)) throw new BadRequestException(`Файл '${newId}.json' уже существует`);
-      // Update maps before file ops so chokidar events for old/new paths are handled correctly
+      this.projectsService.deleteInstance(projectId, id);
       this.instances.delete(id);
-      this.instances.set(newId, updated);
-      this.instanceFileToId.delete(filePath);
-      this.instanceFileToId.set(newFilePath, newId);
-      fs.renameSync(filePath, newFilePath);
-      fs.writeFileSync(newFilePath, JSON.stringify(updated, null, 2), 'utf-8');
       this.events.emit('device:id:changed', { oldId: id, newId });
-    } else {
-      fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), 'utf-8');
     }
+    this.projectsService.writeInstance(projectId, updated);
+    this.instances.set(newId, updated);
 
     return this.merge(updated)!;
   }
 
   deleteDevice(id: string): void {
     if (this.templates.has(id)) throw new BadRequestException('Нельзя удалить шаблон');
-    const filePath = Array.from(this.instanceFileToId.entries()).find(([, v]) => v === id)?.[0];
-    if (!filePath) throw new NotFoundException(`Устройство '${id}' не найдено`);
-    this.projectsService.deleteInstanceFile(filePath);
+    if (!this.instances.has(id)) throw new NotFoundException(`Устройство '${id}' не найдено`);
+    const projectId = this.projectsService.getActiveProjectId();
+    if (projectId) this.projectsService.deleteInstance(projectId, id);
+    this.instances.delete(id);
+    this.events.emit('device:removed', id);
   }
 }

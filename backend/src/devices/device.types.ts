@@ -7,7 +7,7 @@ export interface DeviceParam {
   id: string;
   name: string;
   register: number;
-  access: 'read' | 'read-write';
+  access: string;
   type: 'float' | 'integer' | 'enum';
   scale?: number;
   unit?: string;
@@ -60,5 +60,6 @@ export interface DeviceConfig {
   images?: DeviceImages;
   errorCodes?: Record<string, string>;
   alerts?: AlertRule[];
+  access_legend?: Record<string, string>;
   groups: ParamGroup[];
 }

@@ -12,6 +12,7 @@ import { OnModuleInit } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { DevicesService } from '../devices/devices.service';
 import { ModbusService } from '../modbus/modbus.service';
+import { ProjectsService } from '../projects/projects.service';
 
 const RECONNECT_INTERVAL_MS = 5000;
 
@@ -32,6 +33,7 @@ export class ModbusGateway
   constructor(
     private readonly devicesService: DevicesService,
     private readonly modbusService: ModbusService,
+    private readonly projectsService: ProjectsService,
   ) {}
 
   onModuleInit() {
@@ -58,6 +60,10 @@ export class ModbusGateway
       this.server?.emit('modbus:status', this.buildStatus());
       this.startReconnect();
     });
+
+    this.projectsService.events.on('project:folder:mismatch', (mismatches) => {
+      this.server?.emit('project:folder:mismatch', mismatches);
+    });
   }
 
   afterInit(_server: Server) {}
@@ -65,6 +71,8 @@ export class ModbusGateway
   handleConnection(client: Socket) {
     client.emit('devices:list', this.devicesService.getAll());
     client.emit('modbus:status', this.buildStatus());
+    const mismatches = this.projectsService.checkMismatches();
+    if (mismatches.length) client.emit('project:folder:mismatch', mismatches);
   }
 
   handleDisconnect(_client: Socket) {}

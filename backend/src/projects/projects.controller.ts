@@ -10,9 +10,39 @@ export class ProjectsController {
     return this.projectsService.listProjects();
   }
 
+  @Get('active')
+  getActive() {
+    const id = this.projectsService.getActiveProjectId();
+    return { id };
+  }
+
+  @Get('mismatches')
+  getMismatches() {
+    return this.projectsService.checkMismatches();
+  }
+
   @Post()
   create(@Body() body: { name: string }) {
     return this.projectsService.createProject(body.name);
+  }
+
+  @Post('active')
+  setActive(@Body() body: { id: string | null }) {
+    this.projectsService.setActiveProject(body.id);
+    return { success: true };
+  }
+
+  @Post('import')
+  importProject(@Body() body: { content: any }) {
+    return this.projectsService.importProject(body.content);
+  }
+
+  @Post(':folderId/fix-mismatch')
+  fixMismatch(
+    @Param('folderId') folderId: string,
+    @Body() body: { action: 'sync-to-folder' | 'rename-to-content' },
+  ) {
+    return this.projectsService.fixMismatch(folderId, body.action);
   }
 
   @Patch(':id')
@@ -23,18 +53,6 @@ export class ProjectsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     this.projectsService.deleteProject(id);
-    return { success: true };
-  }
-
-  @Get('active')
-  getActive() {
-    const id = this.projectsService.getActiveProjectId();
-    return { id };
-  }
-
-  @Post('active')
-  setActive(@Body() body: { id: string | null }) {
-    this.projectsService.setActiveProject(body.id);
     return { success: true };
   }
 }
