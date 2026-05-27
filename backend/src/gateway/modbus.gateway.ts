@@ -64,6 +64,9 @@ export class ModbusGateway
     this.projectsService.events.on('project:folder:mismatch', (mismatches) => {
       this.server?.emit('project:folder:mismatch', mismatches);
     });
+    this.projectsService.events.on('projects:changed', () => {
+      this.server?.emit('projects:updated', this.projectsService.listProjects());
+    });
   }
 
   afterInit(_server: Server) {}

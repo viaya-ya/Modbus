@@ -80,10 +80,16 @@ export class ProjectsService implements OnModuleInit, OnModuleDestroy {
     });
     this.projectWatcher.on('addDir', (dirPath: string) => {
       if (dirPath === this.projectsPath) return;
-      setTimeout(() => this.emitMismatches(), 500);
+      setTimeout(() => {
+        this.events.emit('projects:changed');
+        this.emitMismatches();
+      }, 500);
     });
     this.projectWatcher.on('unlinkDir', () => {
-      setTimeout(() => this.emitMismatches(), 500);
+      setTimeout(() => {
+        this.events.emit('projects:changed');
+        this.emitMismatches();
+      }, 500);
     });
     this.projectWatcher.on('change', (filePath: string) => {
       if (filePath.endsWith('.project.json')) {

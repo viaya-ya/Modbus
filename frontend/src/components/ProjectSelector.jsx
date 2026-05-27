@@ -27,7 +27,11 @@ export default function ProjectSelector({ onProjectChange, onProjectInit }) {
   useEffect(() => {
     load()
     socket.on('project:folder:mismatch', setMismatches)
-    return () => socket.off('project:folder:mismatch', setMismatches)
+    socket.on('projects:updated', (list) => setProjects(list))
+    return () => {
+      socket.off('project:folder:mismatch', setMismatches)
+      socket.off('projects:updated')
+    }
   }, [])
 
   async function load() {
