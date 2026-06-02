@@ -122,10 +122,22 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
       latestCols.current = c
     }
     setGroupOrder(deviceSettings.groupOrder ?? null)
-    const pw = deviceSettings.pendingWrites ?? {}
-    setPendingWrites(pw)
-    latestPendingWrites.current = pw
   }, [deviceSettings])
+
+  useEffect(() => {
+    setPendingWrites({})
+    latestPendingWrites.current = {}
+    let cancelled = false
+    api.get(`/devices/${device.id}/pending-writes`)
+      .then(({ data }) => {
+        if (cancelled) return
+        const pw = data ?? {}
+        setPendingWrites(pw)
+        latestPendingWrites.current = pw
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [device.id])
 
   const handlePendingWriteChange = useCallback((paramId, val) => {
     setPendingWrites(prev => {
@@ -135,9 +147,9 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
     })
     if (pendingSaveTimer.current) clearTimeout(pendingSaveTimer.current)
     pendingSaveTimer.current = setTimeout(() => {
-      saveDeviceSettings({ pendingWrites: latestPendingWrites.current })
+      api.patch(`/devices/${device.id}/pending-writes`, { pendingWrites: latestPendingWrites.current }).catch(() => {})
     }, 500)
-  }, [saveDeviceSettings])
+  }, [device.id, saveDeviceSettings])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 

@@ -5,7 +5,7 @@ import {
 } from 'antd'
 import {
   PlusOutlined, FolderOpenOutlined, DownOutlined,
-  EditOutlined, DeleteOutlined, ImportOutlined,
+  EditOutlined, DeleteOutlined, ImportOutlined, ExportOutlined,
   WarningOutlined, RollbackOutlined, CheckOutlined,
 } from '@ant-design/icons'
 import api from '../api'
@@ -114,6 +114,15 @@ export default function ProjectSelector({ onProjectChange, onProjectInit }) {
     editForm.setFieldsValue({ name: project.name })
   }
 
+  // ─── Export ───────────────────────────────────────────────────────────────
+
+  function handleExport(id) {
+    const a = document.createElement('a')
+    a.href = `/api/projects/${id}/export`
+    a.download = `${id}.project.json`
+    a.click()
+  }
+
   // ─── Import ───────────────────────────────────────────────────────────────
 
   function handleImportClick() {
@@ -177,6 +186,10 @@ export default function ProjectSelector({ onProjectChange, onProjectInit }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minWidth: 180 }}>
           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
           <Space size={0} onClick={e => e.stopPropagation()}>
+            <Button
+              type="text" size="small" icon={<ExportOutlined />}
+              style={{ color: '#888' }} onClick={() => handleExport(p.id)}
+            />
             <Button
               type="text" size="small" icon={<EditOutlined />}
               style={{ color: '#888' }} onClick={() => openEdit(p)}

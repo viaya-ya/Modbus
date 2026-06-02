@@ -33,6 +33,17 @@ export class DevicesController {
     return device;
   }
 
+  @Get(':id/pending-writes')
+  getPendingWrites(@Param('id') id: string) {
+    return this.devicesService.getDevicePendingWrites(id);
+  }
+
+  @Patch(':id/pending-writes')
+  updatePendingWrites(@Param('id') id: string, @Body() body: { pendingWrites: Record<string, any> }) {
+    this.devicesService.updateDevicePendingWrites(id, body.pendingWrites);
+    return { success: true };
+  }
+
   @Post()
   create(@Body() body: { templateId: string; name: string; slaveId: number }) {
     return this.devicesService.createDevice(body.templateId, body.name, body.slaveId);

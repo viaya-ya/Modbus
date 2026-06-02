@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ProjectsService } from './projects.service';
 
 @Controller('projects')
@@ -19,6 +20,16 @@ export class ProjectsController {
   @Get('mismatches')
   getMismatches() {
     return this.projectsService.checkMismatches();
+  }
+
+  @Get(':id/export')
+  export(@Param('id') id: string, @Res() res: Response) {
+    const filePath = this.projectsService.getProjectFilePath(id);
+    if (!filePath) {
+      res.status(404).json({ message: `Проект '${id}' не найден` });
+      return;
+    }
+    res.download(filePath, `${id}.project.json`);
   }
 
   @Post()
