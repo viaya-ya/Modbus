@@ -111,7 +111,9 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
   const [currentFillStamp, setCurrentFillStamp] = useState(0)
   const latestCols = useRef(DEFAULT_COLS)
   const latestPendingWrites = useRef({})
+  const latestCurrentValues = useRef({})
   const pendingSaveTimer = useRef(null)
+  const currentSaveTimer = useRef(null)
   const resizing = useRef(null)
 
   const [deviceSettings, saveDeviceSettings] = useDeviceSettings(device.templateId ?? device.id)
@@ -142,7 +144,9 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
     api.get(`/devices/${device.id}/current-values`)
       .then(({ data }) => {
         if (cancelled) return
-        setCurrentValues(data ?? {})
+        const cv = data ?? {}
+        setCurrentValues(cv)
+        latestCurrentValues.current = cv
       })
       .catch(() => {})
     return () => { cancelled = true }
@@ -159,6 +163,18 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
       api.patch(`/devices/${device.id}/pending-writes`, { pendingWrites: latestPendingWrites.current }).catch(() => {})
     }, 500)
   }, [device.id, saveDeviceSettings])
+
+  const handleReadValue = useCallback((paramId, val) => {
+    setCurrentValues(prev => {
+      const next = { ...prev, [paramId]: val }
+      latestCurrentValues.current = next
+      return next
+    })
+    if (currentSaveTimer.current) clearTimeout(currentSaveTimer.current)
+    currentSaveTimer.current = setTimeout(() => {
+      api.patch(`/devices/${device.id}/current-values`, { currentValues: latestCurrentValues.current }).catch(() => {})
+    }, 500)
+  }, [device.id])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -217,6 +233,12 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
     setGroupValues(prev => ({ ...prev, ...results }))
     setReadingGroup(null)
     message.success(`Группа ${group.id} прочитана`)
+    if (Object.keys(results).length > 0) {
+      const merged = { ...latestCurrentValues.current, ...results }
+      setCurrentValues(merged)
+      latestCurrentValues.current = merged
+      api.patch(`/devices/${device.id}/current-values`, { currentValues: merged }).catch(() => {})
+    }
   }
 
   const query = search.trim().toLowerCase()
@@ -292,6 +314,7 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
               fillStamp={fillStamp}
               currentValue={currentValues[param.id]}
               currentFillStamp={currentFillStamp}
+              onReadValue={handleReadValue}
             />
           ))}
         </div>

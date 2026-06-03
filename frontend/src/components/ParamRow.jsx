@@ -38,7 +38,7 @@ function formatValue(type, val, unit, options) {
 
 const DEFAULT_COLS = { id: 90, desc: 220, def: 120, cur: 150, write: 290 }
 
-export default function ParamRow({ device, param, modbusConnected, deviceRunning, injectedValue, cols, onWrite, onClearGroupValue, pendingWriteValue, onPendingWriteChange, fillStamp, currentValue, currentFillStamp }) {
+export default function ParamRow({ device, param, modbusConnected, deviceRunning, injectedValue, cols, onWrite, onClearGroupValue, pendingWriteValue, onPendingWriteChange, fillStamp, currentValue, currentFillStamp, onReadValue }) {
   const [value, setValue]         = useState(null)
   const [bitState, setBitState]   = useState({})
   const [editValue, setEditValue] = useState(null)
@@ -82,6 +82,7 @@ export default function ParamRow({ device, param, modbusConnected, deviceRunning
       const res = await api.post('/modbus/read', { deviceId: device.id, paramId: param.id })
       onClearGroupValue?.(param.id)
       setValue(res.data.value)
+      onReadValue?.(param.id, res.data.value)
       if (param.type === 'bitmask' && param.bits) {
         setBitState(intToBitState(param.bits, res.data.value))
         setEditValue(res.data.value)
