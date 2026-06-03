@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Collapse, Button, Input, message, Typography, Popconfirm, Space } from 'antd'
+import { Collapse, Button, Input, message, Typography, Popconfirm, Space, Modal, Table } from 'antd'
 import { DownloadOutlined, SearchOutlined, RollbackOutlined, HolderOutlined, HistoryOutlined, DatabaseOutlined } from '@ant-design/icons'
 import {
   DndContext,
@@ -109,6 +109,7 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
   const [fillStamp, setFillStamp] = useState(0)
   const [currentValues, setCurrentValues] = useState({})
   const [currentFillStamp, setCurrentFillStamp] = useState(0)
+  const [currentValuesModalOpen, setCurrentValuesModalOpen] = useState(false)
   const latestCols = useRef(DEFAULT_COLS)
   const latestPendingWrites = useRef({})
   const latestCurrentValues = useRef({})
@@ -411,8 +412,8 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
         <Button
           icon={<DatabaseOutlined />}
           disabled={Object.keys(currentValues).length === 0}
-          onClick={() => setCurrentFillStamp(s => s + 1)}
-          title="Заполнить поля записи последними прочитанными значениями"
+          onClick={() => setCurrentValuesModalOpen(true)}
+          title="Просмотреть и применить последние прочитанные значения"
         >
           Текущие параметры
         </Button>
@@ -464,6 +465,35 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
           </div>
         </SortableContext>
       </DndContext>
+
+      <Modal
+        title={<Space><DatabaseOutlined />Текущие параметры устройства</Space>}
+        open={currentValuesModalOpen}
+        onCancel={() => setCurrentValuesModalOpen(false)}
+        onOk={() => {
+          setCurrentFillStamp(s => s + 1)
+          setCurrentValuesModalOpen(false)
+        }}
+        okText="Подставить в поля записи"
+        cancelText="Закрыть"
+        width={640}
+      >
+        <Table
+          size="small"
+          pagination={false}
+          scroll={{ y: 400 }}
+          dataSource={device.groups.flatMap(g => g.params)
+            .filter(p => currentValues[p.id] != null)
+            .map(p => ({ key: p.id, id: p.id, name: p.name, value: currentValues[p.id], unit: p.unit ?? '' }))
+          }
+          columns={[
+            { title: 'Параметр', dataIndex: 'id', width: 90 },
+            { title: 'Название', dataIndex: 'name' },
+            { title: 'Значение', dataIndex: 'value', width: 100, render: (v, r) => `${v} ${r.unit}`.trim() },
+          ]}
+          locale={{ emptyText: 'Нет сохранённых значений' }}
+        />
+      </Modal>
     </>
   )
 }
