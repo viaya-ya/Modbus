@@ -147,8 +147,14 @@ export class ModbusService {
         this.client.setTimeout(150);
         try {
           this.client.setID(addr);
-          await this.client.readHoldingRegisters(0, 1);
-          return true;
+          // Пробуем PUMP-диапазон (0) и VH-диапазон (0xF000)
+          try {
+            await this.client.readHoldingRegisters(0, 1);
+            return true;
+          } catch {
+            await this.client.readHoldingRegisters(0xF000, 1);
+            return true;
+          }
         } catch {
           return false;
         } finally {
