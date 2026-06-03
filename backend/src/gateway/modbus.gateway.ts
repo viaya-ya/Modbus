@@ -198,6 +198,49 @@ export class ModbusGateway
     this.scanCancelled = true;
   }
 
+  // ─── Device identification ─────────────────────────────────────────────────
+
+  private static readonly TEMPLATE_MAP: Record<string, string> = {
+    vh:   'Elhart-Emd-VH-Full',
+    pump: 'Elhart-Emd-Pump-Full',
+  };
+
+  @SubscribeMessage('bus:identify:start')
+  async handleBusIdentifyStart(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { slaveIds: number[] },
+  ) {
+    if (!this.modbusService.isConnected()) {
+      client.emit('bus:identify:error', { message: 'Нет подключения к порту' });
+      return;
+    }
+
+    for (const slaveId of payload.slaveIds) {
+      const model = await this.modbusService.identifyDevice(slaveId);
+      const templateId = ModbusGateway.TEMPLATE_MAP[model] ?? null;
+
+      if (model === 'unknown') {
+        client.emit('bus:identify:progress', { slaveId, model, error: 'Не удалось определить модель' });
+        continue;
+      }
+
+      if (!templateId) {
+        client.emit('bus:identify:progress', { slaveId, model, error: `Шаблон для ${model.toUpperCase()} не добавлен` });
+        continue;
+      }
+
+      try {
+        const name = `EMD-${model.toUpperCase()}-${slaveId}`;
+        const device = this.devicesService.createDevice(templateId, name, slaveId);
+        client.emit('bus:identify:progress', { slaveId, model, deviceId: device.id, name: device.name });
+      } catch (e) {
+        client.emit('bus:identify:progress', { slaveId, model, error: (e as Error).message });
+      }
+    }
+
+    client.emit('bus:identify:done');
+  }
+
   // ─── Monitor ───────────────────────────────────────────────────────────────
 
   @SubscribeMessage('monitor:start')

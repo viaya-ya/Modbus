@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import {
   Button, Modal, InputNumber, Progress, Space,
-  Tag, Typography, Alert, Row, Col, Divider, Tooltip,
+  Tag, Typography, Alert, Row, Col, Divider, Tooltip, List,
 } from 'antd'
-import { ApartmentOutlined, CloseCircleOutlined } from '@ant-design/icons'
+import { ApartmentOutlined, CloseCircleOutlined, PlusCircleOutlined, CheckCircleOutlined, ExclamationCircleOutlined, LoadingOutlined } from '@ant-design/icons'
 import socket from '../socket'
 import { addLog } from '../log'
 
@@ -17,6 +17,9 @@ export default function BusScanner({ connected }) {
   const [found, setFound] = useState([])
   const [done, setDone] = useState(false)
   const [error, setError] = useState(null)
+  const [identifying, setIdentifying] = useState(false)
+  const [identifyResults, setIdentifyResults] = useState([]) // { slaveId, model, deviceId?, name?, error? }
+  const [identifyDone, setIdentifyDone] = useState(false)
 
   useEffect(() => {
     function onProgress({ current, total: t, found: f }) {
@@ -40,13 +43,25 @@ export default function BusScanner({ connected }) {
       setError(msg)
       addLog('error', `Ошибка сканирования шины: ${msg}`)
     }
+    function onIdentifyProgress(result) {
+      setIdentifyResults(prev => [...prev, result])
+    }
+    function onIdentifyDone() {
+      setIdentifying(false)
+      setIdentifyDone(true)
+    }
+
     socket.on('bus:scan:progress', onProgress)
     socket.on('bus:scan:done', onDone)
     socket.on('bus:scan:error', onError)
+    socket.on('bus:identify:progress', onIdentifyProgress)
+    socket.on('bus:identify:done', onIdentifyDone)
     return () => {
       socket.off('bus:scan:progress', onProgress)
       socket.off('bus:scan:done', onDone)
       socket.off('bus:scan:error', onError)
+      socket.off('bus:identify:progress', onIdentifyProgress)
+      socket.off('bus:identify:done', onIdentifyDone)
     }
   }, [])
 
@@ -62,6 +77,17 @@ export default function BusScanner({ connected }) {
     setDone(false)
     setError(null)
     setRunning(false)
+    setIdentifying(false)
+    setIdentifyResults([])
+    setIdentifyDone(false)
+  }
+
+  function handleIdentify() {
+    setIdentifying(true)
+    setIdentifyResults([])
+    setIdentifyDone(false)
+    socket.emit('bus:identify:start', { slaveIds: found })
+    addLog('info', `Определение моделей устройств: Slave ID ${found.join(', ')}`)
   }
 
   function handleStart() {
@@ -199,6 +225,52 @@ export default function BusScanner({ connected }) {
                 В диапазоне {from}–{to} устройства не найдены
               </Typography.Text>
             </Space>
+          )}
+
+          {/* Identify block */}
+          {done && found.length > 0 && !identifying && !identifyDone && (
+            <>
+              <Divider style={{ margin: '4px 0' }} />
+              <Button
+                type="primary"
+                icon={<PlusCircleOutlined />}
+                onClick={handleIdentify}
+              >
+                Определить и добавить устройства
+              </Button>
+            </>
+          )}
+
+          {(identifying || identifyDone) && identifyResults.length > 0 && (
+            <>
+              <Divider style={{ margin: '4px 0' }} />
+              <List
+                size="small"
+                dataSource={identifyResults}
+                renderItem={r => (
+                  <List.Item style={{ padding: '4px 0' }}>
+                    <Space>
+                      {r.error
+                        ? <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
+                        : <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                      }
+                      <Tag color="blue">Slave ID {r.slaveId}</Tag>
+                      <Tag color={r.model === 'vh' ? 'purple' : r.model === 'pump' ? 'green' : 'orange'}>
+                        {r.model === 'unknown' ? 'Неизвестно' : `EMD-${r.model?.toUpperCase()}`}
+                      </Tag>
+                      {r.name && <Typography.Text strong>{r.name}</Typography.Text>}
+                      {r.error && <Typography.Text type="danger" style={{ fontSize: 12 }}>{r.error}</Typography.Text>}
+                    </Space>
+                  </List.Item>
+                )}
+              />
+              {identifying && (
+                <Space>
+                  <LoadingOutlined />
+                  <Typography.Text type="secondary">Определение устройств...</Typography.Text>
+                </Space>
+              )}
+            </>
           )}
 
           {/* Кнопки управления */}

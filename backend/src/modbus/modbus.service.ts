@@ -113,6 +113,27 @@ export class ModbusService {
     }));
   }
 
+  async identifyDevice(slaveId: number): Promise<'vh' | 'pump' | 'unknown'> {
+    return this.withLock(async () => {
+      this.client.setTimeout(150);
+      try {
+        this.client.setID(slaveId);
+        await this.client.readHoldingRegisters(0xF70B, 1); // P7.11 — только у EMD-VH
+        return 'vh';
+      } catch {
+        try {
+          this.client.setID(slaveId);
+          await this.client.readHoldingRegisters(0, 1); // F0.00 — PUMP
+          return 'pump';
+        } catch {
+          return 'unknown';
+        }
+      } finally {
+        this.client.setTimeout(2000);
+      }
+    });
+  }
+
   async scanBus(
     from: number,
     to: number,

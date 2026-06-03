@@ -1,6 +1,6 @@
 {
-  "id": "Elhart-Emd-Pump-VH-Full",
-  "name": "Elhart-Emd-Pump-VH-Full",
+  "id": "Elhart-Emd-VH-Full",
+  "name": "Elhart-Emd-VH-Full",
   "description": "Преобразователь частоты для насосов VH (FULL)",
   "template": true,
   "connection": {
