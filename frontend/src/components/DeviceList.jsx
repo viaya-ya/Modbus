@@ -32,7 +32,8 @@ export default function DeviceList({ devices, selectedIds, onSelectionChange, co
       await api.post('/devices', values)
       setAddOpen(false)
     } catch (e) {
-      console.error(e)
+      const msg = e?.response?.data?.message ?? 'Ошибка создания устройства'
+      addForm.setFields([{ name: 'slaveId', errors: [msg] }])
     } finally {
       setSubmitting(false)
     }
@@ -57,7 +58,8 @@ export default function DeviceList({ devices, selectedIds, onSelectionChange, co
       await api.patch(`/devices/${editDevice.id}`, values)
       setEditDevice(null)
     } catch (e) {
-      console.error(e)
+      const msg = e?.response?.data?.message ?? 'Ошибка сохранения'
+      editForm.setFields([{ name: 'slaveId', errors: [msg] }])
     } finally {
       setSubmitting(false)
     }

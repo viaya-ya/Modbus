@@ -203,6 +203,13 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
+    if (patch.slaveId !== undefined) {
+      const duplicate = Array.from(this.instances.values()).find(
+        i => i.id !== id && i.connection.slaveId === patch.slaveId,
+      );
+      if (duplicate) throw new BadRequestException(`Устройство со Slave ID ${patch.slaveId} уже существует (${duplicate.id})`);
+    }
+
     const updated: DeviceInstance = {
       ...instance,
       id: newId,
