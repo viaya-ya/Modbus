@@ -172,6 +172,9 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
       id = `${baseName}_${counter++}`;
     }
 
+    const duplicate = Array.from(this.instances.values()).find(i => i.connection.slaveId === slaveId);
+    if (duplicate) throw new BadRequestException(`Устройство со Slave ID ${slaveId} уже существует (${duplicate.id})`);
+
     const instance: DeviceInstance = { id, name, templateId, connection: { slaveId } };
     this.instances.set(id, instance);
     this.projectsService.writeInstance(projectId, instance);
