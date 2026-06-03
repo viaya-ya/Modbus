@@ -118,12 +118,12 @@ export class ModbusService {
       this.client.setTimeout(150);
       try {
         this.client.setID(slaveId);
-        await this.client.readHoldingRegisters(0xF70B, 1); // P7.11 — только у EMD-VH
+        await this.client.readHoldingRegisters(0xF000, 1);
         return 'vh';
       } catch {
         try {
           this.client.setID(slaveId);
-          await this.client.readHoldingRegisters(0, 1); // F0.00 — PUMP
+          await this.client.readHoldingRegisters(0, 1);
           return 'pump';
         } catch {
           return 'unknown';
