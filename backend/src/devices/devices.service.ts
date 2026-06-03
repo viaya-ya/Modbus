@@ -250,6 +250,21 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
     this.projectsService.writeInstance(projectId, updated);
   }
 
+  getDeviceCurrentValues(id: string): Record<string, any> {
+    const instance = this.instances.get(id);
+    return instance?.currentValues ?? {};
+  }
+
+  updateDeviceCurrentValues(id: string, currentValues: Record<string, any>): void {
+    const instance = this.instances.get(id);
+    if (!instance) return;
+    const projectId = this.projectsService.getActiveProjectId();
+    if (!projectId) return;
+    const updated = { ...instance, currentValues };
+    this.instances.set(id, updated);
+    this.projectsService.writeInstance(projectId, updated);
+  }
+
   deleteDevice(id: string): void {
     if (this.templates.has(id)) throw new BadRequestException('Нельзя удалить шаблон');
     if (!this.instances.has(id)) throw new NotFoundException(`Устройство '${id}' не найдено`);

@@ -38,11 +38,12 @@ function formatValue(type, val, unit, options) {
 
 const DEFAULT_COLS = { id: 90, desc: 220, def: 120, cur: 150, write: 290 }
 
-export default function ParamRow({ device, param, modbusConnected, deviceRunning, injectedValue, cols, onWrite, onClearGroupValue, pendingWriteValue, onPendingWriteChange, fillStamp }) {
+export default function ParamRow({ device, param, modbusConnected, deviceRunning, injectedValue, cols, onWrite, onClearGroupValue, pendingWriteValue, onPendingWriteChange, fillStamp, currentValue, currentFillStamp }) {
   const [value, setValue]         = useState(null)
   const [bitState, setBitState]   = useState({})
   const [editValue, setEditValue] = useState(null)
   const appliedStamp = useRef(0)
+  const appliedCurrentStamp = useRef(0)
 
   useEffect(() => {
     if (!fillStamp || fillStamp === appliedStamp.current || pendingWriteValue == null) return
@@ -52,6 +53,15 @@ export default function ParamRow({ device, param, modbusConnected, deviceRunning
       setBitState(intToBitState(param.bits, pendingWriteValue))
     }
   }, [fillStamp])
+
+  useEffect(() => {
+    if (!currentFillStamp || currentFillStamp === appliedCurrentStamp.current || currentValue == null) return
+    appliedCurrentStamp.current = currentFillStamp
+    setEditValue(currentValue)
+    if (param.type === 'bitmask' && param.bits) {
+      setBitState(intToBitState(param.bits, currentValue))
+    }
+  }, [currentFillStamp])
   const [reading, setReading]   = useState(false)
   const [writing, setWriting]   = useState(false)
 

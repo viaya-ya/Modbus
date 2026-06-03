@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Collapse, Button, Input, message, Typography, Popconfirm, Space } from 'antd'
-import { DownloadOutlined, SearchOutlined, RollbackOutlined, HolderOutlined, HistoryOutlined } from '@ant-design/icons'
+import { DownloadOutlined, SearchOutlined, RollbackOutlined, HolderOutlined, HistoryOutlined, DatabaseOutlined } from '@ant-design/icons'
 import {
   DndContext,
   closestCenter,
@@ -107,6 +107,8 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
   const [groupOrder, setGroupOrder] = useState(null)
   const [pendingWrites, setPendingWrites] = useState({})
   const [fillStamp, setFillStamp] = useState(0)
+  const [currentValues, setCurrentValues] = useState({})
+  const [currentFillStamp, setCurrentFillStamp] = useState(0)
   const latestCols = useRef(DEFAULT_COLS)
   const latestPendingWrites = useRef({})
   const pendingSaveTimer = useRef(null)
@@ -127,6 +129,7 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
   useEffect(() => {
     setPendingWrites({})
     latestPendingWrites.current = {}
+    setCurrentValues({})
     let cancelled = false
     api.get(`/devices/${device.id}/pending-writes`)
       .then(({ data }) => {
@@ -134,6 +137,12 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
         const pw = data ?? {}
         setPendingWrites(pw)
         latestPendingWrites.current = pw
+      })
+      .catch(() => {})
+    api.get(`/devices/${device.id}/current-values`)
+      .then(({ data }) => {
+        if (cancelled) return
+        setCurrentValues(data ?? {})
       })
       .catch(() => {})
     return () => { cancelled = true }
@@ -281,6 +290,8 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
               pendingWriteValue={pendingWrites[param.id]}
               onPendingWriteChange={handlePendingWriteChange}
               fillStamp={fillStamp}
+              currentValue={currentValues[param.id]}
+              currentFillStamp={currentFillStamp}
             />
           ))}
         </div>
@@ -325,6 +336,11 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
     setGroupValues(prev => ({ ...prev, ...results }))
     setReadingGroup(null)
     message.success(`Прочитано ${Object.keys(results).length} из ${allParams.length} параметров`)
+    if (Object.keys(results).length > 0) {
+      const merged = { ...currentValues, ...results }
+      setCurrentValues(merged)
+      api.patch(`/devices/${device.id}/current-values`, { currentValues: merged }).catch(() => {})
+    }
   }
 
   async function resetAll() {
@@ -368,6 +384,14 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
           title="Заполнить поля записи сохранёнными черновиками"
         >
           Черновик
+        </Button>
+        <Button
+          icon={<DatabaseOutlined />}
+          disabled={Object.keys(currentValues).length === 0}
+          onClick={() => setCurrentFillStamp(s => s + 1)}
+          title="Заполнить поля записи последними прочитанными значениями"
+        >
+          Текущие параметры
         </Button>
         {!onWrite && (
           <Button

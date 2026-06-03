@@ -44,6 +44,17 @@ export class DevicesController {
     return { success: true };
   }
 
+  @Get(':id/current-values')
+  getCurrentValues(@Param('id') id: string) {
+    return this.devicesService.getDeviceCurrentValues(id);
+  }
+
+  @Patch(':id/current-values')
+  updateCurrentValues(@Param('id') id: string, @Body() body: { currentValues: Record<string, any> }) {
+    this.devicesService.updateDeviceCurrentValues(id, body.currentValues);
+    return { success: true };
+  }
+
   @Post()
   create(@Body() body: { templateId: string; name: string; slaveId: number }) {
     return this.devicesService.createDevice(body.templateId, body.name, body.slaveId);

@@ -12,6 +12,7 @@ export interface DeviceInstance {
   templateId: string;
   connection: Partial<DeviceConnection>;
   pendingWrites?: Record<string, any>;
+  currentValues?: Record<string, any>;
 }
 
 export interface ProjectFile extends ProjectMeta {
