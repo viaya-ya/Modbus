@@ -5,7 +5,7 @@ import * as path from 'path';
 import type { FSWatcher } from 'chokidar';
 import { DeviceConfig, DeviceParam } from './device.types';
 import { ProjectsService } from '../projects/projects.service';
-import { DeviceInstance } from '../projects/project.types';
+import { DeviceInstance, DeviceNote } from '../projects/project.types';
 
 @Injectable()
 export class DevicesService implements OnModuleInit, OnModuleDestroy {
@@ -261,6 +261,32 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
     const projectId = this.projectsService.getActiveProjectId();
     if (!projectId) return;
     const updated = { ...instance, currentValues };
+    this.instances.set(id, updated);
+    this.projectsService.writeInstance(projectId, updated);
+  }
+
+  getDeviceNotes(id: string): DeviceNote[] {
+    return this.instances.get(id)?.notes ?? [];
+  }
+
+  addDeviceNote(id: string, text: string): DeviceNote {
+    const instance = this.instances.get(id);
+    if (!instance) throw new NotFoundException(`Устройство '${id}' не найдено`);
+    const projectId = this.projectsService.getActiveProjectId();
+    if (!projectId) throw new BadRequestException('Нет активного проекта');
+    const note: DeviceNote = { id: Date.now().toString(), createdAt: new Date().toISOString(), text };
+    const updated = { ...instance, notes: [...(instance.notes ?? []), note] };
+    this.instances.set(id, updated);
+    this.projectsService.writeInstance(projectId, updated);
+    return note;
+  }
+
+  deleteDeviceNote(id: string, noteId: string): void {
+    const instance = this.instances.get(id);
+    if (!instance) throw new NotFoundException(`Устройство '${id}' не найдено`);
+    const projectId = this.projectsService.getActiveProjectId();
+    if (!projectId) throw new BadRequestException('Нет активного проекта');
+    const updated = { ...instance, notes: (instance.notes ?? []).filter(n => n.id !== noteId) };
     this.instances.set(id, updated);
     this.projectsService.writeInstance(projectId, updated);
   }

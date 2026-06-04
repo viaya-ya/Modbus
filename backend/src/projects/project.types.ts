@@ -6,6 +6,12 @@ export interface ProjectMeta {
   created: string;
 }
 
+export interface DeviceNote {
+  id: string;
+  createdAt: string;
+  text: string;
+}
+
 export interface DeviceInstance {
   id: string;
   name: string;
@@ -13,6 +19,7 @@ export interface DeviceInstance {
   connection: Partial<DeviceConnection>;
   pendingWrites?: Record<string, any>;
   currentValues?: Record<string, any>;
+  notes?: DeviceNote[];
 }
 
 export interface ProjectFile extends ProjectMeta {

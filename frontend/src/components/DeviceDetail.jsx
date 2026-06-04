@@ -5,6 +5,7 @@ import Monitor from './Monitor'
 import DeviceInfo from './DeviceInfo'
 import ControlPanel from './ControlPanel'
 import BackupRestore from './BackupRestore'
+import DeviceNotes from './DeviceNotes'
 import api from '../api'
 
 function findStatusParam(device) {
@@ -54,6 +55,11 @@ export default function DeviceDetail({ device, modbusConnected }) {
       key: 'info',
       label: 'Устройство',
       children: <DeviceInfo device={device} />,
+    },
+    {
+      key: 'notes',
+      label: 'Журнал',
+      children: <DeviceNotes device={device} />,
     },
   ]
 

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, NotFoundException, Res } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, NotFoundException, Res, HttpCode } from '@nestjs/common';
 import type { Response } from 'express';
 import { DevicesService } from './devices.service';
 import * as fs from 'fs';
@@ -63,6 +63,22 @@ export class DevicesController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() body: { name?: string; slaveId?: number; baudRate?: number; dataBits?: number; stopBits?: number; parity?: string }) {
     return this.devicesService.updateDevice(id, body);
+  }
+
+  @Get(':id/notes')
+  getNotes(@Param('id') id: string) {
+    return this.devicesService.getDeviceNotes(id);
+  }
+
+  @Post(':id/notes')
+  addNote(@Param('id') id: string, @Body() body: { text: string }) {
+    return this.devicesService.addDeviceNote(id, body.text);
+  }
+
+  @Delete(':id/notes/:noteId')
+  @HttpCode(204)
+  deleteNote(@Param('id') id: string, @Param('noteId') noteId: string) {
+    this.devicesService.deleteDeviceNote(id, noteId);
   }
 
   @Delete(':id')
