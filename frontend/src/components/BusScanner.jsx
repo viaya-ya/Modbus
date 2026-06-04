@@ -141,9 +141,9 @@ export default function BusScanner({ connected }) {
         onCancel={handleClose}
         footer={null}
         width={500}
-        destroyOnClose={false}
+        destroyOnHidden={false}
       >
-        <Space direction="vertical" style={{ width: '100%' }} size={16}>
+        <Space orientation="vertical" style={{ width: '100%' }} size={16}>
 
           {/* Настройка диапазона */}
           <Row gutter={12} align="middle">

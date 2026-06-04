@@ -30,7 +30,7 @@ export default function LogDrawer({ open, onClose }) {
       }
       open={open}
       onClose={onClose}
-      width={460}
+      size={460}
       extra={
         <Button size="small" icon={<DeleteOutlined />} onClick={clearLog} disabled={!entries.length}>
           Очистить
