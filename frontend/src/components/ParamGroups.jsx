@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Collapse, Button, Input, message, Typography, Popconfirm, Space, Modal, Table } from 'antd'
-import { DownloadOutlined, SearchOutlined, RollbackOutlined, HolderOutlined, HistoryOutlined, DatabaseOutlined } from '@ant-design/icons'
+import { DownloadOutlined, SearchOutlined, RollbackOutlined, HolderOutlined, HistoryOutlined, DatabaseOutlined, UploadOutlined } from '@ant-design/icons'
 import {
   DndContext,
   closestCenter,
@@ -242,6 +242,53 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
     }
   }
 
+  async function writeGroup(group, e) {
+    e.stopPropagation()
+    const toWrite = group.params.filter(
+      p => isParamWritable(device, p) && latestPendingWrites.current[p.id] != null
+    )
+    if (toWrite.length === 0) {
+      message.info(`В группе ${group.id} нет значений для записи`)
+      return
+    }
+    setReadingGroup(group.id)
+    let ok = 0
+    const results = {}
+    for (const param of toWrite) {
+      try {
+        await api.post('/modbus/write', { deviceId: device.id, paramId: param.id, value: latestPendingWrites.current[param.id] })
+        results[param.id] = latestPendingWrites.current[param.id]
+        ok++
+      } catch { }
+    }
+    setGroupValues(prev => ({ ...prev, ...results }))
+    setReadingGroup(null)
+    message.success(`Записано ${ok} из ${toWrite.length} параметров группы ${group.id}`)
+  }
+
+  async function writeAll() {
+    const allParams = device.groups.flatMap(g => g.params).filter(
+      p => isParamWritable(device, p) && latestPendingWrites.current[p.id] != null
+    )
+    if (allParams.length === 0) {
+      message.info('Нет значений для записи')
+      return
+    }
+    setReadingGroup('__all__')
+    let ok = 0
+    const results = {}
+    for (const param of allParams) {
+      try {
+        await api.post('/modbus/write', { deviceId: device.id, paramId: param.id, value: latestPendingWrites.current[param.id] })
+        results[param.id] = latestPendingWrites.current[param.id]
+        ok++
+      } catch { }
+    }
+    setGroupValues(prev => ({ ...prev, ...results }))
+    setReadingGroup(null)
+    message.success(`Записано ${ok} из ${allParams.length} параметров`)
+  }
+
   const query = search.trim().toLowerCase()
   const filteredGroups = orderedGroups
     .map(group => ({
@@ -272,6 +319,15 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
           }}
         >
           Прочитать всё
+        </Button>
+        <Button
+          size="small"
+          icon={<UploadOutlined />}
+          disabled={!modbusConnected || readingGroup !== null}
+          loading={readingGroup === group.id}
+          onClick={e => writeGroup(group, e)}
+        >
+          Записать всё
         </Button>
         <Popconfirm
           title="Сброс до заводских"
@@ -425,6 +481,16 @@ export default function ParamGroups({ device, modbusConnected, deviceRunning, on
             onClick={readAll}
           >
             Прочитать все
+          </Button>
+        )}
+        {!onWrite && (
+          <Button
+            icon={<UploadOutlined />}
+            disabled={!modbusConnected || readingGroup !== null}
+            loading={readingGroup === '__all__'}
+            onClick={writeAll}
+          >
+            Записать все
           </Button>
         )}
         {!onWrite && <Popconfirm
