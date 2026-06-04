@@ -281,6 +281,22 @@ export class DevicesService implements OnModuleInit, OnModuleDestroy {
     return note;
   }
 
+  updateDeviceNote(id: string, noteId: string, text: string): DeviceNote {
+    const instance = this.instances.get(id);
+    if (!instance) throw new NotFoundException(`Устройство '${id}' не найдено`);
+    const projectId = this.projectsService.getActiveProjectId();
+    if (!projectId) throw new BadRequestException('Нет активного проекта');
+    const notes = instance.notes ?? [];
+    const idx = notes.findIndex(n => n.id === noteId);
+    if (idx === -1) throw new NotFoundException(`Запись '${noteId}' не найдена`);
+    const updated_note: DeviceNote = { ...notes[idx], text };
+    const updatedNotes = [...notes.slice(0, idx), updated_note, ...notes.slice(idx + 1)];
+    const updated = { ...instance, notes: updatedNotes };
+    this.instances.set(id, updated);
+    this.projectsService.writeInstance(projectId, updated);
+    return updated_note;
+  }
+
   deleteDeviceNote(id: string, noteId: string): void {
     const instance = this.instances.get(id);
     if (!instance) throw new NotFoundException(`Устройство '${id}' не найдено`);

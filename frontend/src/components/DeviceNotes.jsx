@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Button, Input, List, Typography, Popconfirm, Empty, Space, Tag } from 'antd'
-import { DeleteOutlined, PlusOutlined, FileTextOutlined } from '@ant-design/icons'
+import { DeleteOutlined, PlusOutlined, FileTextOutlined, EditOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons'
 import api from '../api'
 
 export default function DeviceNotes({ device }) {
   const [notes, setNotes] = useState([])
   const [text, setText] = useState('')
   const [adding, setAdding] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editText, setEditText] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     setNotes([])
@@ -25,6 +28,30 @@ export default function DeviceNotes({ device }) {
     } catch {
     } finally {
       setAdding(false)
+    }
+  }
+
+  function startEdit(note) {
+    setEditingId(note.id)
+    setEditText(note.text)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditText('')
+  }
+
+  async function handleSaveEdit(noteId) {
+    if (!editText.trim()) return
+    setSaving(true)
+    try {
+      const { data } = await api.patch(`/devices/${device.id}/notes/${noteId}`, { text: editText.trim() })
+      setNotes(prev => prev.map(n => n.id === noteId ? data : n))
+      setEditingId(null)
+      setEditText('')
+    } catch {
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -82,7 +109,30 @@ export default function DeviceNotes({ device }) {
                 borderRadius: 6,
                 border: '1px solid #f0f0f0',
               }}
-              actions={[
+              actions={editingId === note.id ? [
+                <Button
+                  key="save"
+                  size="small"
+                  type="primary"
+                  icon={<CheckOutlined />}
+                  loading={saving}
+                  disabled={!editText.trim()}
+                  onClick={() => handleSaveEdit(note.id)}
+                />,
+                <Button
+                  key="cancel"
+                  size="small"
+                  icon={<CloseOutlined />}
+                  onClick={cancelEdit}
+                />,
+              ] : [
+                <Button
+                  key="edit"
+                  size="small"
+                  type="text"
+                  icon={<EditOutlined />}
+                  onClick={() => startEdit(note)}
+                />,
                 <Popconfirm
                   key="del"
                   title="Удалить запись?"
@@ -91,12 +141,7 @@ export default function DeviceNotes({ device }) {
                   okButtonProps={{ danger: true }}
                   onConfirm={() => handleDelete(note.id)}
                 >
-                  <Button
-                    size="small"
-                    type="text"
-                    danger
-                    icon={<DeleteOutlined />}
-                  />
+                  <Button size="small" type="text" danger icon={<DeleteOutlined />} />
                 </Popconfirm>,
               ]}
             >
@@ -106,11 +151,23 @@ export default function DeviceNotes({ device }) {
                     {formatDate(note.createdAt)}
                   </Tag>
                 }
-                description={
+                description={editingId === note.id ? (
+                  <Input.TextArea
+                    autoFocus
+                    value={editText}
+                    onChange={e => setEditText(e.target.value)}
+                    autoSize={{ minRows: 2, maxRows: 8 }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSaveEdit(note.id)
+                      if (e.key === 'Escape') cancelEdit()
+                    }}
+                    style={{ marginTop: 4 }}
+                  />
+                ) : (
                   <Typography.Text style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>
                     {note.text}
                   </Typography.Text>
-                }
+                )}
               />
             </List.Item>
           )}

@@ -75,6 +75,11 @@ export class DevicesController {
     return this.devicesService.addDeviceNote(id, body.text);
   }
 
+  @Patch(':id/notes/:noteId')
+  updateNote(@Param('id') id: string, @Param('noteId') noteId: string, @Body() body: { text: string }) {
+    return this.devicesService.updateDeviceNote(id, noteId, body.text);
+  }
+
   @Delete(':id/notes/:noteId')
   @HttpCode(204)
   deleteNote(@Param('id') id: string, @Param('noteId') noteId: string) {
