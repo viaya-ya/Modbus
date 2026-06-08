@@ -116,21 +116,69 @@ export class ModbusService {
   async identifyDevice(slaveId: number): Promise<'vh' | 'pump' | 'unknown'> {
     return this.withLock(async () => {
       this.client.setTimeout(150);
+      this.client.setID(slaveId);
       try {
-        this.client.setID(slaveId);
-        await this.client.readHoldingRegisters(0xF000, 1);
-        return 'vh';
-      } catch {
+        // FC43/0x2B MEI — Read Device Identification (code 3 = extended, object 0x00 = VendorName)
         try {
-          this.client.setID(slaveId);
-          await this.client.readHoldingRegisters(0, 1);
-          return 'pump';
+          const info = await this.client.readDeviceIdentification(3, 0x00);
+          // data[0]=VendorName, data[1]=ProductCode, data[2]=MajorMinorRevision
+          const product = (info.data[1] ?? '').toLowerCase();
+          if (product.includes('vh')) return 'vh';
+          if (product.includes('pump') || product.includes('emd')) return 'pump';
         } catch {
-          return 'unknown';
+          // MEI не поддерживается (ELHART), пробуем FC17 Report Server ID
+          try {
+            // reportServerID — это FC17 (0x11), аналог сырого [slaveId, 0x11] + CRC
+            await this.client.reportServerID(0);
+          } catch {
+            // FC17 тоже не поддерживается
+          }
+        }
+
+        // Определение типа по регистрам
+        try {
+          await this.client.readHoldingRegisters(0xF000, 1);
+          return 'vh';
+        } catch {
+          try {
+            await this.client.readHoldingRegisters(0, 1);
+            return 'pump';
+          } catch {
+            return 'unknown';
+          }
         }
       } finally {
         this.client.setTimeout(2000);
       }
+    });
+  }
+
+  async probeDevice(slaveId: number): Promise<{ slaveId: number; mei: object; fc17: object }> {
+    return this.withLock(async () => {
+      this.client.setTimeout(500);
+      this.client.setID(slaveId);
+      let mei: object;
+      let fc17: object;
+      try {
+        const result = await this.client.readDeviceIdentification(3, 0x00);
+        mei = { conformityLevel: result.conformityLevel, data: result.data };
+      } catch (e: any) {
+        mei = { error: e?.message ?? String(e) };
+      }
+      try {
+        const result = await this.client.reportServerID(0);
+        fc17 = {
+          serverId: result.serverId,
+          running: result.running,
+          additionalDataHex: result.additionalData.toString('hex'),
+          additionalDataText: result.additionalData.toString('utf8').replace(/[^\x20-\x7E]/g, '?'),
+        };
+      } catch (e: any) {
+        fc17 = { error: e?.message ?? String(e) };
+      } finally {
+        this.client.setTimeout(2000);
+      }
+      return { slaveId, mei, fc17 };
     });
   }
 

@@ -53,6 +53,14 @@ export class ModbusController {
     return { success: true };
   }
 
+  @Post('probe')
+  async probe(@Body() body: { slaveId: number }) {
+    if (!this.modbusService.isConnected())
+      throw new BadRequestException('Not connected to Modbus');
+    if (!body.slaveId) throw new BadRequestException('slaveId is required');
+    return this.modbusService.probeDevice(body.slaveId);
+  }
+
   @Post('read')
   async read(@Body() body: { deviceId: string; paramId: string }) {
     if (!this.modbusService.isConnected())

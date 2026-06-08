@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import {
   Button, Modal, InputNumber, Progress, Space,
-  Tag, Typography, Alert, Row, Col, Divider, Tooltip, List,
+  Tag, Typography, Alert, Row, Col, Divider, Tooltip, List, Spin,
 } from 'antd'
-import { ApartmentOutlined, CloseCircleOutlined, PlusCircleOutlined, CheckCircleOutlined, ExclamationCircleOutlined, LoadingOutlined } from '@ant-design/icons'
+import { ApartmentOutlined, CloseCircleOutlined, PlusCircleOutlined, CheckCircleOutlined, ExclamationCircleOutlined, LoadingOutlined, InfoCircleOutlined } from '@ant-design/icons'
 import socket from '../socket'
+import api from '../api'
 import { addLog } from '../log'
 
 export default function BusScanner({ connected }) {
@@ -20,6 +21,8 @@ export default function BusScanner({ connected }) {
   const [identifying, setIdentifying] = useState(false)
   const [identifyResults, setIdentifyResults] = useState([]) // { slaveId, model, deviceId?, name?, error? }
   const [identifyDone, setIdentifyDone] = useState(false)
+  const [probeModal, setProbeModal] = useState(null) // { slaveId, loading, data }
+
 
   useEffect(() => {
     function onProgress({ current, total: t, found: f }) {
@@ -82,6 +85,16 @@ export default function BusScanner({ connected }) {
     setIdentifyDone(false)
   }
 
+  async function handleProbe(slaveId) {
+    setProbeModal({ slaveId, loading: true, data: null })
+    try {
+      const { data } = await api.post('/modbus/probe', { slaveId })
+      setProbeModal({ slaveId, loading: false, data })
+    } catch (e) {
+      setProbeModal({ slaveId, loading: false, data: { error: e?.response?.data?.message ?? e.message } })
+    }
+  }
+
   function handleIdentify() {
     setIdentifying(true)
     setIdentifyResults([])
@@ -129,6 +142,38 @@ export default function BusScanner({ connected }) {
           Сканер шины
         </Button>
       </Tooltip>
+
+      <Modal
+        title={
+          <Space>
+            <InfoCircleOutlined />
+            {`Сырая идентификация — Slave ID ${probeModal?.slaveId}`}
+          </Space>
+        }
+        open={!!probeModal}
+        onCancel={() => setProbeModal(null)}
+        footer={<Button onClick={() => setProbeModal(null)}>Закрыть</Button>}
+        width={600}
+        destroyOnHidden
+      >
+        {probeModal?.loading
+          ? <div style={{ textAlign: 'center', padding: 32 }}><Spin /></div>
+          : (
+            <pre style={{
+              background: '#1a1a1a',
+              color: '#d4d4d4',
+              padding: 16,
+              borderRadius: 6,
+              fontSize: 13,
+              overflow: 'auto',
+              maxHeight: 480,
+              margin: 0,
+            }}>
+              {JSON.stringify(probeModal?.data, null, 2)}
+            </pre>
+          )
+        }
+      </Modal>
 
       <Modal
         title={
@@ -209,9 +254,20 @@ export default function BusScanner({ connected }) {
                 </Typography.Text>
                 <Space wrap size={4}>
                   {found.map(id => (
-                    <Tag key={id} color="blue" style={{ fontSize: 13, padding: '2px 8px' }}>
-                      Slave ID {id}
-                    </Tag>
+                    <Space key={id} size={2}>
+                      <Tag color="blue" style={{ fontSize: 13, padding: '2px 8px' }}>
+                        Slave ID {id}
+                      </Tag>
+                      <Tooltip title="Сырая идентификация (MEI / FC17)">
+                        <Button
+                          size="small"
+                          type="text"
+                          icon={<InfoCircleOutlined />}
+                          onClick={() => handleProbe(id)}
+                          style={{ color: '#1677ff' }}
+                        />
+                      </Tooltip>
+                    </Space>
                   ))}
                 </Space>
               </div>
