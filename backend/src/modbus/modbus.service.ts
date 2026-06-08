@@ -121,11 +121,12 @@ export class ModbusService {
         // FC43/0x2B MEI — Read Device Identification (code 3 = extended, object 0x00 = VendorName)
         try {
           const info = await this.client.readDeviceIdentification(3, 0x00);
+          console.log('[MEI] info:', JSON.stringify(info, null, 2));
           const product = (info.data[1] ?? '').toLowerCase();
           if (product.includes('vh')) return 'vh';
           if (product.includes('pump')) return 'pump';
-        } catch {
-          // MEI не поддерживается, определяем по регистрам
+        } catch (e: any) {
+          console.log('[MEI] не поддерживается:', e?.message);
         }
 
         // Определение типа по регистрам
