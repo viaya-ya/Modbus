@@ -154,19 +154,26 @@ export class ModbusService {
   }
 
   async probeDevice(slaveId: number): Promise<{ slaveId: number; mei: object; fc17: object }> {
+    const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
+      Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error(`timeout after ${ms}ms`)), ms),
+        ),
+      ]);
+
     return this.withLock(async () => {
-      this.client.setTimeout(500);
       this.client.setID(slaveId);
       let mei: object;
       let fc17: object;
       try {
-        const result = await this.client.readDeviceIdentification(3, 0x00);
+        const result = await withTimeout(this.client.readDeviceIdentification(3, 0x00), 1000);
         mei = { conformityLevel: result.conformityLevel, data: result.data };
       } catch (e: any) {
         mei = { error: e?.message ?? String(e) };
       }
       try {
-        const result = await this.client.reportServerID(0);
+        const result = await withTimeout(this.client.reportServerID(0), 1000);
         fc17 = {
           serverId: result.serverId,
           running: result.running,
@@ -175,8 +182,6 @@ export class ModbusService {
         };
       } catch (e: any) {
         fc17 = { error: e?.message ?? String(e) };
-      } finally {
-        this.client.setTimeout(2000);
       }
       return { slaveId, mei, fc17 };
     });
