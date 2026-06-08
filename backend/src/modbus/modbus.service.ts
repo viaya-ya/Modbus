@@ -120,21 +120,12 @@ export class ModbusService {
       try {
         // FC43/0x2B MEI — Read Device Identification (code 3 = extended, object 0x00 = VendorName)
         try {
-          console.log(`[identifyDevice] slaveId=${slaveId} — пробуем MEI FC43`);
           const info = await this.client.readDeviceIdentification(3, 0x00);
-          console.log('MEI result:', JSON.stringify(info, null, 2));
           const product = (info.data[1] ?? '').toLowerCase();
           if (product.includes('vh')) return 'vh';
           if (product.includes('pump')) return 'pump';
-        } catch (e: any) {
-          console.log(`[identifyDevice] MEI упал: ${e?.message}`);
-          try {
-            console.log(`[identifyDevice] пробуем FC17`);
-            await this.client.reportServerID(0);
-            console.log(`[identifyDevice] FC17 ответил`);
-          } catch (e2: any) {
-            console.log(`[identifyDevice] FC17 упал: ${e2?.message}`);
-          }
+        } catch {
+          // MEI не поддерживается, определяем по регистрам
         }
 
         // Определение типа по регистрам
