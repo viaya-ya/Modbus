@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Button, InputNumber, AutoComplete, Space, Tag, Modal, Form, message, Tooltip } from 'antd'
+import { Button, Select, AutoComplete, Space, Tag, Modal, Form, message, Tooltip } from 'antd'
 import { ReloadOutlined, ScanOutlined, LoadingOutlined } from '@ant-design/icons'
 import socket from '../socket'
 import api from '../api'
@@ -161,7 +161,16 @@ export default function ConnectionPanel({ connected, reconnecting, reconnectAtte
             label="Скорость (бод)"
             extra="Все устройства на одной шине RS-485 должны работать на одной скорости"
           >
-            <InputNumber min={1200} max={115200} style={{ width: '100%' }} />
+            <Select style={{ width: '100%' }} options={[
+              { value: 1200,   label: '1200' },
+              { value: 2400,   label: '2400' },
+              { value: 4800,   label: '4800' },
+              { value: 9600,   label: '9600' },
+              { value: 19200,  label: '19200' },
+              { value: 38400,  label: '38400' },
+              { value: 57600,  label: '57600' },
+              { value: 115200, label: '115200' },
+            ]} />
           </Form.Item>
         </Form>
       </Modal>
