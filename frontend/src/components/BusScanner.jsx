@@ -153,24 +153,36 @@ export default function BusScanner({ connected }) {
         open={!!probeModal}
         onCancel={() => setProbeModal(null)}
         footer={<Button onClick={() => setProbeModal(null)}>Закрыть</Button>}
-        width={600}
+        width={620}
         destroyOnHidden
       >
         {probeModal?.loading
           ? <div style={{ textAlign: 'center', padding: 32 }}><Spin /></div>
           : (
-            <pre style={{
-              background: '#1a1a1a',
-              color: '#d4d4d4',
-              padding: 16,
-              borderRadius: 6,
-              fontSize: 13,
-              overflow: 'auto',
-              maxHeight: 480,
-              margin: 0,
-            }}>
-              {JSON.stringify(probeModal?.data, null, 2)}
-            </pre>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[
+                { key: 'mei1', label: 'MEI Basic (code=1)' },
+                { key: 'mei2', label: 'MEI Regular (code=2)' },
+                { key: 'mei3', label: 'MEI Extended (code=3)' },
+                { key: 'fc17', label: 'FC17 Report Server ID' },
+              ].map(({ key, label }) => (
+                <div key={key}>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>{label}</Typography.Text>
+                  <pre style={{
+                    background: '#1a1a1a',
+                    color: probeModal?.data?.[key]?.error ? '#ff7875' : '#d4d4d4',
+                    padding: 12,
+                    borderRadius: 6,
+                    fontSize: 13,
+                    overflow: 'auto',
+                    maxHeight: 160,
+                    margin: '4px 0 0',
+                  }}>
+                    {JSON.stringify(probeModal?.data?.[key], null, 2)}
+                  </pre>
+                </div>
+              ))}
+            </div>
           )
         }
       </Modal>

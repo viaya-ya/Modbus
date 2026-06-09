@@ -115,39 +115,28 @@ export class ModbusService {
 
   async identifyDevice(slaveId: number): Promise<'vh' | 'pump' | 'unknown'> {
     return this.withLock(async () => {
-      this.client.setTimeout(150);
-      this.client.setID(slaveId);
-      try {
-        // FC43/0x2B MEI — Read Device Identification (code 3 = extended, object 0x00 = VendorName)
-        try {
-          const info = await this.client.readDeviceIdentification(3, 0x00);
-          console.log('[MEI] info:', JSON.stringify(info, null, 2));
-          const product = (info.data[1] ?? '').toLowerCase();
-          if (product.includes('vh')) return 'vh';
-          if (product.includes('pump')) return 'pump';
-        } catch (e: any) {
-          console.log('[MEI] не поддерживается:', e?.message);
-        }
+        this.client.setTimeout(150);
+            try {
+                this.client.setID(slaveId);
 
-        // Определение типа по регистрам
-        try {
-          await this.client.readHoldingRegisters(0xF000, 1);
-          return 'vh';
-        } catch {
-          try {
-            await this.client.readHoldingRegisters(0, 1);
-            return 'pump';
-          } catch {
-            return 'unknown';
-          }
+                await this.client.readHoldingRegisters(0xF000, 1);
+                return 'vh';
+            } catch {
+                try {
+                    await this.client.readHoldingRegisters(0, 1);
+                    return 'pump';
+                } catch {
+                    return 'unknown';
+                }
+            } finally {
+                this.client.setTimeout(2000);
+            }
         }
-      } finally {
-        this.client.setTimeout(2000);
-      }
-    });
+    );
   }
 
-  async probeDevice(slaveId: number): Promise<{ slaveId: number; mei: object; fc17: object }> {
+  async probeDevice(slaveId: number): Promise<{ slaveId: number; mei1: object; mei2: object; mei3: object; fc17: object }>
+  {
     const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
       Promise.race([
         promise,
@@ -156,16 +145,21 @@ export class ModbusService {
         ),
       ]);
 
+    const readMei = async (code: number) => {
+      try {
+        const result = await withTimeout(this.client.readDeviceIdentification(code, 0x00), 1000);
+        return { conformityLevel: result.conformityLevel, data: result.data };
+      } catch (e: any) {
+        return { error: e?.message ?? String(e) };
+      }
+    };
+
     return this.withLock(async () => {
       this.client.setID(slaveId);
-      let mei: object;
+      const mei1 = await readMei(1);
+      const mei2 = await readMei(2);
+      const mei3 = await readMei(3);
       let fc17: object;
-      try {
-        const result = await withTimeout(this.client.readDeviceIdentification(3, 0x00), 1000);
-        mei = { conformityLevel: result.conformityLevel, data: result.data };
-      } catch (e: any) {
-        mei = { error: e?.message ?? String(e) };
-      }
       try {
         const result = await withTimeout(this.client.reportServerID(0), 1000);
         fc17 = {
@@ -177,7 +171,7 @@ export class ModbusService {
       } catch (e: any) {
         fc17 = { error: e?.message ?? String(e) };
       }
-      return { slaveId, mei, fc17 };
+      return { slaveId, mei1, mei2, mei3, fc17 };
     });
   }
 
