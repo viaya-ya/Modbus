@@ -207,8 +207,6 @@ export default function ConnectionPanel({ connected, reconnecting, reconnectAtte
                       <Select options={[
                         { value: 8, label: '8' },
                         { value: 7, label: '7' },
-                        { value: 6, label: '6' },
-                        { value: 5, label: '5' },
                       ]} />
                     </Form.Item>
                   </Col>
