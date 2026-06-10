@@ -10,6 +10,7 @@ export interface DeviceParam {
   access: string;
   type: 'float' | 'integer' | 'enum';
   scale?: number;
+  step?: number;
   unit?: string;
   min?: number;
   max?: number;

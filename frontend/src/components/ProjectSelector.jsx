@@ -1,18 +1,23 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   Dropdown, Button, Modal, Form, Input, Space, Popconfirm,
-  message, Alert, Typography,
+  message, Alert, Typography, Select, Tag,
 } from 'antd'
 import {
   PlusOutlined, FolderOpenOutlined, DownOutlined,
   EditOutlined, DeleteOutlined, ImportOutlined, ExportOutlined,
-  WarningOutlined, RollbackOutlined, CheckOutlined,
+  WarningOutlined, RollbackOutlined, CheckOutlined, DisconnectOutlined,
 } from '@ant-design/icons'
 import api from '../api'
 import socket from '../socket'
 
 export default function ProjectSelector({ onProjectChange, onProjectInit }) {
   const [projects, setProjects]       = useState([])
+  const [portRequired, setPortRequired] = useState(null) // { projectId, lastPort? }
+  const [ports, setPorts]             = useState([])
+  const [selectedPort, setSelectedPort] = useState(null)
+  const [baudRate, setBaudRate]       = useState(9600)
+  const [connecting, setConnecting]   = useState(false)
   const [activeId, setActiveId]       = useState(null)
   const [createOpen, setCreateOpen]   = useState(false)
   const [creating, setCreating]       = useState(false)
@@ -28,9 +33,16 @@ export default function ProjectSelector({ onProjectChange, onProjectInit }) {
     load()
     socket.on('project:folder:mismatch', setMismatches)
     socket.on('projects:updated', (list) => setProjects(list))
+    socket.on('port:required', async ({ projectId, lastPort }) => {
+      const { data } = await api.get('/modbus/ports')
+      setPorts(data)
+      setSelectedPort(lastPort ?? null)
+      setPortRequired({ projectId, lastPort })
+    })
     return () => {
       socket.off('project:folder:mismatch', setMismatches)
       socket.off('projects:updated')
+      socket.off('port:required')
     }
   }, [])
 
@@ -49,12 +61,20 @@ export default function ProjectSelector({ onProjectChange, onProjectInit }) {
 
   async function handleSelect(id) {
     try {
-      await api.post('/projects/active', { id })
+      socket.emit('project:select', { id })
       setActiveId(id)
       onProjectChange?.(id)
     } catch {
       message.error('Не удалось переключить проект')
     }
+  }
+
+  async function handlePortConnect() {
+    if (!selectedPort) return
+    setConnecting(true)
+    socket.emit('connect:port', { portPath: selectedPort, baudRate })
+    setPortRequired(null)
+    setConnecting(false)
   }
 
   async function handleCreate({ name }) {
@@ -327,6 +347,63 @@ export default function ProjectSelector({ onProjectChange, onProjectInit }) {
             <Input placeholder="Например: Завод 1" autoFocus />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Port required dialog */}
+      <Modal
+        title={
+          <Space>
+            <DisconnectOutlined style={{ color: '#faad14' }} />
+            Выберите COM-порт для проекта
+          </Space>
+        }
+        open={!!portRequired}
+        onCancel={() => setPortRequired(null)}
+        onOk={handlePortConnect}
+        okText="Подключить"
+        cancelText="Пропустить"
+        confirmLoading={connecting}
+        okButtonProps={{ disabled: !selectedPort }}
+      >
+        <Space direction="vertical" style={{ width: '100%', marginTop: 8 }} size={12}>
+          {portRequired?.lastPort && (
+            <Alert
+              type="warning"
+              showIcon
+              message={`Порт ${portRequired.lastPort} недоступен или занят`}
+            />
+          )}
+          <Typography.Text type="secondary">
+            Выберите COM-порт для подключения к устройствам этого проекта
+          </Typography.Text>
+          <Select
+            style={{ width: '100%' }}
+            placeholder="Выберите порт"
+            value={selectedPort}
+            onChange={setSelectedPort}
+            options={ports.map(p => ({
+              value: p.path,
+              disabled: p.busy,
+              label: (
+                <Space>
+                  <span style={{ color: p.busy ? '#999' : undefined }}>
+                    {p.manufacturer ? `${p.path} — ${p.manufacturer}` : p.path}
+                  </span>
+                  {p.busy && <Tag color="red" style={{ margin: 0, fontSize: 11 }}>занят</Tag>}
+                </Space>
+              ),
+            }))}
+          />
+          <Space>
+            <Typography.Text>Скорость:</Typography.Text>
+            <Select
+              value={baudRate}
+              onChange={setBaudRate}
+              style={{ width: 120 }}
+              options={[1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200].map(v => ({ value: v, label: String(v) }))}
+            />
+          </Space>
+        </Space>
       </Modal>
 
       {/* Rename project */}

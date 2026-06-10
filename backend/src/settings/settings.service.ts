@@ -10,13 +10,19 @@ export interface DeviceUISettings {
   pendingWrites?: Record<string, any>;
 }
 
+export interface ProjectConnection {
+  portPath: string;
+  baudRate: number;
+}
+
 export interface AppSettings {
   activeProject: string | null;
   siderSide: 'left' | 'right';
   deviceSettings?: Record<string, DeviceUISettings>;
+  projectConnections?: Record<string, ProjectConnection>;
 }
 
-const DEFAULTS: AppSettings = { activeProject: null, siderSide: 'left', deviceSettings: {} };
+const DEFAULTS: AppSettings = { activeProject: null, siderSide: 'left', deviceSettings: {}, projectConnections: {} };
 
 @Injectable()
 export class SettingsService {
@@ -46,6 +52,22 @@ export class SettingsService {
     this.settings = { ...this.settings, ...patch };
     fs.writeFileSync(this.filePath, JSON.stringify(this.settings, null, 2), 'utf-8');
     return this.settings;
+  }
+
+  saveProjectConnection(projectId: string, conn: ProjectConnection): void {
+    const updated: AppSettings = {
+      ...this.settings,
+      projectConnections: {
+        ...(this.settings.projectConnections ?? {}),
+        [projectId]: conn,
+      },
+    };
+    this.settings = updated;
+    fs.writeFileSync(this.filePath, JSON.stringify(updated, null, 2), 'utf-8');
+  }
+
+  getProjectConnection(projectId: string): ProjectConnection | null {
+    return this.settings.projectConnections?.[projectId] ?? null;
   }
 
   updateDeviceSettings(deviceId: string, patch: Partial<DeviceUISettings>): AppSettings {

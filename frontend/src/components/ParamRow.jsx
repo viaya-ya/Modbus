@@ -222,7 +222,7 @@ export default function ParamRow({ device, param, modbusConnected, deviceRunning
                   style={{ width: inputW }}
                   min={param.min}
                   max={param.max}
-                  step={param.scale ?? 1}
+                  step={param.step ?? param.scale ?? 1}
                   placeholder={String(param.default ?? '')}
                   value={editValue ?? undefined}
                   onChange={val => { setEditValue(val); onPendingWriteChange?.(param.id, val) }}

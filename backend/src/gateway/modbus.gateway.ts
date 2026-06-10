@@ -13,6 +13,7 @@ import { Server, Socket } from 'socket.io';
 import { DevicesService } from '../devices/devices.service';
 import { ModbusService } from '../modbus/modbus.service';
 import { ProjectsService } from '../projects/projects.service';
+import { SettingsService } from '../settings/settings.service';
 
 const RECONNECT_INTERVAL_MS = 5000;
 
@@ -34,9 +35,14 @@ export class ModbusGateway
     private readonly devicesService: DevicesService,
     private readonly modbusService: ModbusService,
     private readonly projectsService: ProjectsService,
+    private readonly settingsService: SettingsService,
   ) {}
 
-  onModuleInit() {
+  private pendingPortRequired: { projectId: string; lastPort?: string } | null = null;
+
+  async onModuleInit() {
+    await this.tryAutoConnect();
+
     this.devicesService.events.on('device:added', () =>
       this.server?.emit('devices:updated', this.devicesService.getAll()),
     );
@@ -69,6 +75,24 @@ export class ModbusGateway
     });
   }
 
+  private async tryAutoConnect(): Promise<void> {
+    const activeProject = this.projectsService.getActiveProjectId();
+    if (!activeProject) return;
+    const saved = this.settingsService.getProjectConnection(activeProject);
+    if (!saved) return;
+    const ports = await this.modbusService.listPorts();
+    const available = ports.find(p => p.path === saved.portPath && !p.busy);
+    if (!available) {
+      this.pendingPortRequired = { projectId: activeProject, lastPort: saved.portPath };
+      return;
+    }
+    try {
+      await this.modbusService.connect(saved);
+    } catch {
+      this.pendingPortRequired = { projectId: activeProject, lastPort: saved.portPath };
+    }
+  }
+
   afterInit(_server: Server) {}
 
   handleConnection(client: Socket) {
@@ -76,6 +100,10 @@ export class ModbusGateway
     client.emit('modbus:status', this.buildStatus());
     const mismatches = this.projectsService.checkMismatches();
     if (mismatches.length) client.emit('project:folder:mismatch', mismatches);
+    if (this.pendingPortRequired) {
+      client.emit('port:required', this.pendingPortRequired);
+      this.pendingPortRequired = null;
+    }
   }
 
   handleDisconnect(_client: Socket) {}
@@ -90,12 +118,55 @@ export class ModbusGateway
     this.stopReconnect();
     try {
       await this.modbusService.connect(payload);
+      const activeProject = this.projectsService.getActiveProjectId();
+      if (activeProject) {
+        this.settingsService.saveProjectConnection(activeProject, {
+          portPath: payload.portPath,
+          baudRate: payload.baudRate,
+        });
+      }
       this.server.emit('modbus:status', this.buildStatus());
       return { success: true };
     } catch (e) {
       client.emit('modbus:error', { message: (e as Error).message });
       return { success: false, error: (e as Error).message };
     }
+  }
+
+  @SubscribeMessage('project:select')
+  async handleProjectSelect(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { id: string | null },
+  ) {
+    this.stopReconnect();
+    this.stopMonitor();
+    if (this.modbusService.isConnected()) {
+      await this.modbusService.disconnect();
+      this.server.emit('modbus:status', this.buildStatus());
+    }
+    this.projectsService.setActiveProject(payload.id);
+    if (!payload.id) return { success: true };
+
+    const saved = this.settingsService.getProjectConnection(payload.id);
+    if (!saved) {
+      client.emit('port:required', { projectId: payload.id });
+      return { success: true };
+    }
+
+    const ports = await this.modbusService.listPorts();
+    const available = ports.find(p => p.path === saved.portPath && !p.busy);
+    if (!available) {
+      client.emit('port:required', { projectId: payload.id, lastPort: saved.portPath });
+      return { success: true };
+    }
+
+    try {
+      await this.modbusService.connect(saved);
+      this.server.emit('modbus:status', this.buildStatus());
+    } catch (e) {
+      client.emit('port:required', { projectId: payload.id, lastPort: saved.portPath });
+    }
+    return { success: true };
   }
 
   @SubscribeMessage('disconnect:port')
