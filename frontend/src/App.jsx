@@ -40,6 +40,7 @@ export default function App() {
   const [connected, setConnected] = useState(false)
   const [reconnecting, setReconnecting] = useState(false)
   const [reconnectAttempt, setReconnectAttempt] = useState(0)
+  const [connectedPort, setConnectedPort] = useState(null) // { portPath, baudRate }
   const [logOpen, setLogOpen] = useState(false)
   const entries = useLog()
   const errorCount = entries.filter(e => e.level === 'error').length
@@ -64,6 +65,7 @@ export default function App() {
       setConnected(status.connected)
       setReconnecting(status.reconnecting ?? false)
       setReconnectAttempt(status.attempt ?? 0)
+      setConnectedPort(status.connected && status.options ? status.options : null)
     })
 
     return () => {
@@ -103,7 +105,7 @@ export default function App() {
               onProjectInit={id => setActiveProjectId(id)}
               onProjectChange={id => { setSelectedIds(new Set()); setActiveProjectId(id ?? null) }}
             />
-            <ConnectionPanel connected={connected} reconnecting={reconnecting} reconnectAttempt={reconnectAttempt} />
+            <ConnectionPanel connected={connected} reconnecting={reconnecting} reconnectAttempt={reconnectAttempt} connectedPort={connectedPort} />
             <BusScanner connected={connected} />
           </>
         )}

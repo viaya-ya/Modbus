@@ -5,7 +5,7 @@ import socket from '../socket'
 import api from '../api'
 import { addLog } from '../log'
 
-export default function ConnectionPanel({ connected, reconnecting, reconnectAttempt }) {
+export default function ConnectionPanel({ connected, reconnecting, reconnectAttempt, connectedPort }) {
   const [open, setOpen] = useState(false)
   const [form] = Form.useForm()
   const [ports, setPorts] = useState([])
@@ -82,7 +82,11 @@ export default function ConnectionPanel({ connected, reconnecting, reconnectAtte
   }))
 
   const statusTag = connected ? (
-    <Tag color="green" style={{ margin: 0 }}>Подключено</Tag>
+    <Tooltip title={connectedPort ? `${connectedPort.portPath} · ${connectedPort.baudRate} бод` : undefined}>
+      <Tag color="green" style={{ margin: 0, cursor: connectedPort ? 'default' : undefined }}>
+        Подключено{connectedPort ? ` · ${connectedPort.portPath}` : ''}
+      </Tag>
+    </Tooltip>
   ) : reconnecting ? (
     <Tag color="orange" icon={<LoadingOutlined spin />} style={{ margin: 0 }}>
       Переподключение… попытка {reconnectAttempt}
