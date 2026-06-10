@@ -6,6 +6,9 @@ import { SerialPort } from 'serialport';
 export interface ConnectOptions {
   portPath: string;
   baudRate: number;
+  dataBits?: 5 | 6 | 7 | 8;
+  stopBits?: 1 | 2;
+  parity?: 'none' | 'even' | 'odd' | 'mark' | 'space';
 }
 
 export interface PortInfo {
@@ -49,9 +52,9 @@ export class ModbusService implements OnModuleDestroy {
     this.intentionalDisconnect = false;
     await this.client.connectRTUBuffered(opts.portPath, {
       baudRate: opts.baudRate,
-      dataBits: 8,
-      stopBits: 1,
-      parity: 'none',
+      dataBits: opts.dataBits ?? 8,
+      stopBits: opts.stopBits ?? 1,
+      parity: opts.parity ?? 'none',
     });
     this.client.setTimeout(2000);
     this.connected = true;

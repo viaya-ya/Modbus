@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Button, Select, Space, Tag, Modal, Form, message, Tooltip } from 'antd'
+import { Button, Select, Space, Tag, Modal, Form, message, Tooltip, Collapse, Row, Col } from 'antd'
 import { ReloadOutlined, ScanOutlined, LoadingOutlined } from '@ant-design/icons'
 import socket from '../socket'
 import api from '../api'
@@ -58,8 +58,11 @@ export default function ConnectionPanel({ connected, reconnecting, reconnectAtte
     socket.emit('connect:port', {
       portPath: values.portPath,
       baudRate: values.baudRate,
+      dataBits: values.dataBits,
+      stopBits: values.stopBits,
+      parity: values.parity,
     })
-    addLog('info', `Подключение к порту ${values.portPath}, ${values.baudRate} бод`)
+    addLog('info', `Подключение к порту ${values.portPath}, ${values.baudRate} бод, ${values.dataBits}${values.parity[0].toUpperCase()}${values.stopBits}`)
     setOpen(false)
   }
 
@@ -81,8 +84,12 @@ export default function ConnectionPanel({ connected, reconnecting, reconnectAtte
     ),
   }))
 
+  const portDetails = connectedPort
+    ? `${connectedPort.portPath} · ${connectedPort.baudRate} бод · ${connectedPort.dataBits ?? 8}${(connectedPort.parity ?? 'none')[0].toUpperCase()}${connectedPort.stopBits ?? 1}`
+    : undefined
+
   const statusTag = connected ? (
-    <Tooltip title={connectedPort ? `${connectedPort.portPath} · ${connectedPort.baudRate} бод` : undefined}>
+    <Tooltip title={portDetails}>
       <Tag color="green" style={{ margin: 0, cursor: connectedPort ? 'default' : undefined }}>
         Подключено{connectedPort ? ` · ${connectedPort.portPath}` : ''}
       </Tag>
@@ -139,7 +146,7 @@ export default function ConnectionPanel({ connected, reconnecting, reconnectAtte
           form={form}
           onFinish={handleConnect}
           layout="vertical"
-          initialValues={{ baudRate: 9600 }}
+          initialValues={{ baudRate: 9600, dataBits: 8, stopBits: 1, parity: 'none' }}
         >
           <Form.Item
             name="portPath"
@@ -186,6 +193,48 @@ export default function ConnectionPanel({ connected, reconnecting, reconnectAtte
               { value: 115200, label: '115200' },
             ]} />
           </Form.Item>
+
+          <Collapse
+            ghost
+            size="small"
+            items={[{
+              key: 'advanced',
+              label: <span style={{ color: '#999', fontSize: 12 }}>Дополнительно (8N1 по умолчанию)</span>,
+              children: (
+                <Row gutter={8}>
+                  <Col span={8}>
+                    <Form.Item name="dataBits" label="Биты данных">
+                      <Select options={[
+                        { value: 8, label: '8' },
+                        { value: 7, label: '7' },
+                        { value: 6, label: '6' },
+                        { value: 5, label: '5' },
+                      ]} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item name="stopBits" label="Стоп-биты">
+                      <Select options={[
+                        { value: 1, label: '1' },
+                        { value: 2, label: '2' },
+                      ]} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item name="parity" label="Чётность">
+                      <Select options={[
+                        { value: 'none',  label: 'None'  },
+                        { value: 'even',  label: 'Even'  },
+                        { value: 'odd',   label: 'Odd'   },
+                        { value: 'mark',  label: 'Mark'  },
+                        { value: 'space', label: 'Space' },
+                      ]} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              ),
+            }]}
+          />
         </Form>
       </Modal>
     </Space>

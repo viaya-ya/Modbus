@@ -13,6 +13,9 @@ export interface DeviceUISettings {
 export interface ProjectConnection {
   portPath: string;
   baudRate: number;
+  dataBits?: 5 | 6 | 7 | 8;
+  stopBits?: 1 | 2;
+  parity?: 'none' | 'even' | 'odd' | 'mark' | 'space';
 }
 
 export interface AppSettings {
