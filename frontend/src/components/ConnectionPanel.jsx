@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Button, Select, AutoComplete, Space, Tag, Modal, Form, message, Tooltip } from 'antd'
+import { Button, Select, Space, Tag, Modal, Form, message, Tooltip } from 'antd'
 import { ReloadOutlined, ScanOutlined, LoadingOutlined } from '@ant-design/icons'
 import socket from '../socket'
 import api from '../api'
@@ -70,7 +70,15 @@ export default function ConnectionPanel({ connected, reconnecting, reconnectAtte
 
   const portOptions = ports.map(p => ({
     value: p.path,
-    label: p.manufacturer ? `${p.path} — ${p.manufacturer}` : p.path,
+    disabled: p.busy,
+    label: (
+      <Space>
+        <span style={{ color: p.busy ? '#999' : undefined }}>
+          {p.manufacturer ? `${p.path} — ${p.manufacturer}` : p.path}
+        </span>
+        {p.busy && <Tag color="red" style={{ margin: 0, fontSize: 11 }}>занят</Tag>}
+      </Space>
+    ),
   }))
 
   const statusTag = connected ? (
@@ -146,13 +154,15 @@ export default function ConnectionPanel({ connected, reconnecting, reconnectAtte
             }
             rules={[{ required: true, message: 'Укажите порт' }]}
           >
-            <AutoComplete
+            <Select
               options={portOptions}
-              placeholder="Выберите из списка или введите вручную"
-              filterOption={(input, option) =>
-                option.value.toLowerCase().includes(input.toLowerCase())
-              }
+              placeholder="Выберите порт"
               notFoundContent={loadingPorts ? 'Загрузка...' : 'Порты не найдены'}
+              showSearch
+              filterOption={(input, option) =>
+                String(option.value).toLowerCase().includes(input.toLowerCase())
+              }
+              style={{ width: '100%' }}
             />
           </Form.Item>
 

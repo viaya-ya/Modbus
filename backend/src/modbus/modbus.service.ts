@@ -14,6 +14,7 @@ export interface PortInfo {
   serialNumber?: string;
   vendorId?: string;
   productId?: string;
+  busy: boolean;
 }
 
 @Injectable()
@@ -104,13 +105,31 @@ export class ModbusService {
 
   async listPorts(): Promise<PortInfo[]> {
     const ports = await SerialPort.list();
-    return ports.map(p => ({
-      path: p.path,
-      manufacturer: p.manufacturer,
-      serialNumber: p.serialNumber,
-      vendorId: p.vendorId,
-      productId: p.productId,
+    const results = await Promise.all(ports.map(async p => {
+      const busy = await this.isPortBusy(p.path);
+      return {
+        path: p.path,
+        manufacturer: p.manufacturer,
+        serialNumber: p.serialNumber,
+        vendorId: p.vendorId,
+        productId: p.productId,
+        busy,
+      };
     }));
+    return results;
+  }
+
+  private isPortBusy(path: string): Promise<boolean> {
+    return new Promise(resolve => {
+      const port = new SerialPort({ path, baudRate: 9600, autoOpen: false });
+      port.open(err => {
+        if (err) {
+          resolve(true);
+        } else {
+          port.close(() => resolve(false));
+        }
+      });
+    });
   }
 
   async identifyDevice(slaveId: number): Promise<'vh' | 'pump' | 'unknown'> {
