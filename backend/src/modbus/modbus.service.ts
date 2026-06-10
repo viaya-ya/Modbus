@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { EventEmitter } from 'events';
 import ModbusRTU from 'modbus-serial';
 import { SerialPort } from 'serialport';
@@ -18,7 +18,7 @@ export interface PortInfo {
 }
 
 @Injectable()
-export class ModbusService {
+export class ModbusService implements OnModuleDestroy {
   readonly events = new EventEmitter();
 
   private client = new ModbusRTU();
@@ -255,5 +255,9 @@ export class ModbusService {
 
     if (!found) return null;
     return { portPath: found.path, baudRate };
+  }
+
+  async onModuleDestroy() {
+    await this.disconnect();
   }
 }

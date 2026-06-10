@@ -7,6 +7,7 @@ async function bootstrap() {
   app.useWebSocketAdapter(new IoAdapter(app));
   app.enableCors({ origin: '*' });
   app.setGlobalPrefix('api');
+  app.enableShutdownHooks();
   await app.listen(3000);
   console.log('Backend running on http://localhost:3000');
 }
