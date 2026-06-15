@@ -5,7 +5,7 @@ import socket from '../socket'
 import api from '../api'
 import { addLog } from '../log'
 
-export default function ConnectionPanel({ connected, reconnecting, reconnectAttempt, connectedPort }) {
+export default function ConnectionPanel({ connected, reconnecting, reconnectAttempt, connectedPort, waitingPort }) {
   const [open, setOpen] = useState(false)
   const [form] = Form.useForm()
   const [ports, setPorts] = useState([])
@@ -98,6 +98,12 @@ export default function ConnectionPanel({ connected, reconnecting, reconnectAtte
     <Tag color="orange" icon={<LoadingOutlined spin />} style={{ margin: 0 }}>
       Переподключение… попытка {reconnectAttempt}
     </Tag>
+  ) : waitingPort ? (
+    <Tooltip title="Порт недоступен, ожидаем подключения устройства">
+      <Tag color="processing" icon={<LoadingOutlined spin />} style={{ margin: 0 }}>
+        Ожидание {waitingPort}…
+      </Tag>
+    </Tooltip>
   ) : (
     <Tag color="red" style={{ margin: 0 }}>Не подключено</Tag>
   )

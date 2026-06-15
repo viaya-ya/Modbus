@@ -11,11 +11,12 @@ import {
 import { OnModuleInit } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { DevicesService } from '../devices/devices.service';
-import { ModbusService } from '../modbus/modbus.service';
+import { ModbusService, ConnectOptions } from '../modbus/modbus.service';
 import { ProjectsService } from '../projects/projects.service';
 import { SettingsService } from '../settings/settings.service';
 
 const RECONNECT_INTERVAL_MS = 5000;
+const PORT_WATCH_INTERVAL_MS = 1000;
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class ModbusGateway
@@ -31,14 +32,16 @@ export class ModbusGateway
   private reconnectTimer: NodeJS.Timeout | null = null;
   private reconnectAttempt = 0;
 
+  private portWatchTimer: NodeJS.Timeout | null = null;
+  private watchedPort: ConnectOptions | null = null;
+  private portWatchConnecting = false;
+
   constructor(
     private readonly devicesService: DevicesService,
     private readonly modbusService: ModbusService,
     private readonly projectsService: ProjectsService,
     private readonly settingsService: SettingsService,
   ) {}
-
-  private pendingPortRequired: { projectId: string; lastPort?: string } | null = null;
 
   async onModuleInit() {
     await this.tryAutoConnect();
@@ -80,16 +83,10 @@ export class ModbusGateway
     if (!activeProject) return;
     const saved = this.settingsService.getProjectConnection(activeProject);
     if (!saved) return;
-    const ports = await this.modbusService.listPorts();
-    const available = ports.find(p => p.path === saved.portPath && !p.busy);
-    if (!available) {
-      this.pendingPortRequired = { projectId: activeProject, lastPort: saved.portPath };
-      return;
-    }
     try {
       await this.modbusService.connect(saved);
     } catch {
-      this.pendingPortRequired = { projectId: activeProject, lastPort: saved.portPath };
+      this.startPortWatch(saved);
     }
   }
 
@@ -100,10 +97,6 @@ export class ModbusGateway
     client.emit('modbus:status', this.buildStatus());
     const mismatches = this.projectsService.checkMismatches();
     if (mismatches.length) client.emit('project:folder:mismatch', mismatches);
-    if (this.pendingPortRequired) {
-      client.emit('port:required', this.pendingPortRequired);
-      this.pendingPortRequired = null;
-    }
   }
 
   handleDisconnect(_client: Socket) {}
@@ -116,6 +109,7 @@ export class ModbusGateway
     @MessageBody() payload: { portPath: string; baudRate: number },
   ) {
     this.stopReconnect();
+    this.stopPortWatch();
     try {
       await this.modbusService.connect(payload);
       const activeProject = this.projectsService.getActiveProjectId();
@@ -139,39 +133,39 @@ export class ModbusGateway
     @MessageBody() payload: { id: string | null },
   ) {
     this.stopReconnect();
+    this.stopPortWatch();
     this.stopMonitor();
     if (this.modbusService.isConnected()) {
       await this.modbusService.disconnect();
-      this.server.emit('modbus:status', this.buildStatus());
     }
     this.projectsService.setActiveProject(payload.id);
-    if (!payload.id) return { success: true };
-
-    const saved = this.settingsService.getProjectConnection(payload.id);
-    if (!saved) {
-      client.emit('port:required', { projectId: payload.id });
+    if (!payload.id) {
+      this.server.emit('modbus:status', this.buildStatus());
       return { success: true };
     }
 
-    const ports = await this.modbusService.listPorts();
-    const available = ports.find(p => p.path === saved.portPath && !p.busy);
-    if (!available) {
-      client.emit('port:required', { projectId: payload.id, lastPort: saved.portPath });
+    const saved = this.settingsService.getProjectConnection(payload.id);
+    if (!saved) {
+      // Порт никогда не выбирался — просим пользователя выбрать вручную
+      this.server.emit('modbus:status', this.buildStatus());
+      client.emit('port:required', { projectId: payload.id });
       return { success: true };
     }
 
     try {
       await this.modbusService.connect(saved);
-      this.server.emit('modbus:status', this.buildStatus());
-    } catch (e) {
-      client.emit('port:required', { projectId: payload.id, lastPort: saved.portPath });
+    } catch {
+      // Порт недоступен — ждём появления в фоне
+      this.startPortWatch(saved);
     }
+    this.server.emit('modbus:status', this.buildStatus());
     return { success: true };
   }
 
   @SubscribeMessage('disconnect:port')
   async handleDisconnectPort() {
     this.stopReconnect();
+    this.stopPortWatch();
     this.stopMonitor();
     await this.modbusService.disconnect();
     this.server.emit('modbus:status', this.buildStatus());
@@ -217,7 +211,40 @@ export class ModbusGateway
       ...this.modbusService.getStatus(),
       reconnecting: this.reconnectTimer !== null,
       attempt: this.reconnectAttempt,
+      waitingPort: this.watchedPort?.portPath ?? null,
     };
+  }
+
+  // ─── Port watch ────────────────────────────────────────────────────────────
+
+  private startPortWatch(conn: ConnectOptions) {
+    this.stopPortWatch();
+    this.watchedPort = conn;
+    this.portWatchConnecting = false;
+    this.server?.emit('modbus:status', this.buildStatus());
+
+    this.portWatchTimer = setInterval(async () => {
+      if (this.portWatchConnecting) return;
+      this.portWatchConnecting = true;
+      try {
+        await this.modbusService.connect(this.watchedPort!);
+        this.stopPortWatch();
+        this.server?.emit('modbus:status', this.buildStatus());
+      } catch {
+        // порт ещё недоступен, следующая попытка через PORT_WATCH_INTERVAL_MS
+      } finally {
+        this.portWatchConnecting = false;
+      }
+    }, PORT_WATCH_INTERVAL_MS);
+  }
+
+  private stopPortWatch() {
+    if (this.portWatchTimer) {
+      clearInterval(this.portWatchTimer);
+      this.portWatchTimer = null;
+    }
+    this.watchedPort = null;
+    this.portWatchConnecting = false;
   }
 
   // ─── Bus scan ──────────────────────────────────────────────────────────────
