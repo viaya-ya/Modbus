@@ -197,6 +197,7 @@
           "register": 1,
           "access": "read",
           "type": "float",
+          "scale": 0.01,
           "unit": "Гц"
         },
         {
@@ -205,6 +206,7 @@
           "register": 2,
           "access": "read",
           "type": "float",
+          "scale": 0.01,
           "unit": "Гц"
         },
         {
@@ -213,6 +215,7 @@
           "register": 3,
           "access": "read",
           "type": "float",
+          "scale": 0.1,
           "unit": "А"
         },
         {
@@ -244,7 +247,8 @@
           "name": "Значение обратной связи при использовании ПИД-регулятора",
           "register": 7,
           "access": "read",
-          "type": "float"
+          "type": "float",
+          "scale": 0.01
         },
         {
           "id": "F0.08",
@@ -296,6 +300,7 @@
           "register": 14,
           "access": "read",
           "type": "float",
+          "scale": 0.01,
           "unit": "Гц"
         },
         {
@@ -304,6 +309,7 @@
           "register": 15,
           "access": "read",
           "type": "float",
+          "scale": 0.01,
           "unit": "Гц"
         },
         {
@@ -312,6 +318,7 @@
           "register": 16,
           "access": "read",
           "type": "float",
+          "scale": 0.1,
           "unit": "А"
         },
         {
